@@ -1,0 +1,311 @@
+"use client"
+
+import type React from "react"
+
+import { useState, useEffect } from "react"
+import { Volume2, Repeat, Check, X, ArrowRight, HelpCircle } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Progress } from "@/components/ui/progress"
+import { Input } from "@/components/ui/input"
+import { useToast } from "@/hooks/use-toast"
+import { Breadcrumb } from "@/components/breadcrumb"
+
+interface SoundMnemonic {
+  id: string
+  word: string
+  definition: string
+  mnemonic: string
+  soundDescription: string
+  difficulty: "easy" | "medium" | "hard"
+}
+
+// Sample sound mnemonics
+const soundMnemonics: SoundMnemonic[] = [
+  {
+    id: "1",
+    word: "Eloquent",
+    definition: "Fluent or persuasive in speaking or writing",
+    mnemonic: "Elephant",
+    soundDescription: "Imagine an elephant giving a powerful speech—an eloquent elephant!",
+    difficulty: "medium",
+  },
+  {
+    id: "2",
+    word: "Ephemeral",
+    definition: "Lasting for a very short time",
+    mnemonic: "Femoral",
+    soundDescription: "Think of a 'femoral' (thigh) pain that's thankfully ephemeral—it goes away quickly!",
+    difficulty: "hard",
+  },
+  {
+    id: "3",
+    word: "Perseverance",
+    definition: "Persistence in doing something despite difficulty",
+    mnemonic: "Per-severe-ance",
+    soundDescription: "Even through severe challenges, you advance with perseverance.",
+    difficulty: "medium",
+  },
+  {
+    id: "4",
+    word: "Ubiquitous",
+    definition: "Present, appearing, or found everywhere",
+    mnemonic: "You-be-quit-less",
+    soundDescription: "Think 'you be quit-less'—you can't quit seeing it because it's everywhere!",
+    difficulty: "hard",
+  },
+  {
+    id: "5",
+    word: "Serendipity",
+    definition: "The occurrence of events by chance in a happy or beneficial way",
+    mnemonic: "Serene-dip-ity",
+    soundDescription: "When you take a serene dip in the sea and unexpectedly find a treasure.",
+    difficulty: "medium",
+  },
+]
+
+export default function SoundMnemonicsPage() {
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const [mode, setMode] = useState<"learn" | "practice">("learn")
+  const [userAnswer, setUserAnswer] = useState("")
+  const [isCorrect, setIsCorrect] = useState<boolean | null>(null)
+  const [showHint, setShowHint] = useState(false)
+  const [progress, setProgress] = useState(0)
+  const { toast } = useToast()
+
+  useEffect(() => {
+    // Update progress when current index changes
+    setProgress(((currentIndex + 1) / soundMnemonics.length) * 100)
+  }, [currentIndex])
+
+  const speakWord = () => {
+    const utterance = new SpeechSynthesisUtterance(soundMnemonics[currentIndex].word)
+    utterance.rate = 0.9 // Slightly slower for better clarity
+    window.speechSynthesis.speak(utterance)
+  }
+
+  const speakMnemonic = () => {
+    const utterance = new SpeechSynthesisUtterance(soundMnemonics[currentIndex].mnemonic)
+    utterance.rate = 0.9 // Slightly slower for better clarity
+    window.speechSynthesis.speak(utterance)
+  }
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+
+    const currentMnemonic = soundMnemonics[currentIndex].mnemonic.toLowerCase()
+    const userMnemonic = userAnswer.toLowerCase().trim()
+
+    if (userMnemonic === currentMnemonic) {
+      setIsCorrect(true)
+      toast({
+        title: "Correct!",
+        description: "You remembered the sound mnemonic!",
+      })
+    } else {
+      setIsCorrect(false)
+      toast({
+        title: "Not quite right",
+        description: "Try again or use a hint.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleNext = () => {
+    if (currentIndex < soundMnemonics.length - 1) {
+      setCurrentIndex(currentIndex + 1)
+      setUserAnswer("")
+      setIsCorrect(null)
+      setShowHint(false)
+    } else {
+      // Switch modes or complete exercise
+      if (mode === "learn") {
+        setMode("practice")
+        setCurrentIndex(0)
+        toast({
+          title: "Learning complete!",
+          description: "Now let's practice recalling the mnemonics.",
+        })
+      } else {
+        toast({
+          title: "Exercise complete!",
+          description: "You've completed the sound mnemonics exercise.",
+        })
+        // Reset for a new session
+        setMode("learn")
+        setCurrentIndex(0)
+      }
+    }
+  }
+
+  const currentMnemonic = soundMnemonics[currentIndex]
+
+  return (
+    <div className="container max-w-4xl py-8 space-y-6">
+      <Breadcrumb
+        items={[
+          { label: "Memory", href: "/memory", active: false },
+          { label: "Sound Mnemonics", href: "/memory/sound-mnemonics", active: true },
+        ]}
+      />
+
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold">Sound Mnemonics</h1>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">
+            {currentIndex + 1} of {soundMnemonics.length}
+          </span>
+          <Progress value={progress} className="w-32" />
+        </div>
+      </div>
+
+      <Card className="w-full">
+        <CardHeader>
+          <CardTitle className="flex justify-between items-center">
+            <span>{mode === "learn" ? "Learn Sound Mnemonics" : "Recall Sound Mnemonics"}</span>
+            <Button variant="outline" size="sm" onClick={() => setMode(mode === "learn" ? "practice" : "learn")}>
+              Switch to {mode === "learn" ? "Practice" : "Learn"} Mode
+            </Button>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {mode === "learn" && (
+            <>
+              <div className="flex flex-col items-center gap-4">
+                <div className="text-center">
+                  <h2 className="text-3xl font-bold mb-2">{currentMnemonic.word}</h2>
+                  <p className="text-muted-foreground">{currentMnemonic.definition}</p>
+                </div>
+
+                <div className="flex items-center gap-4 mt-4">
+                  <Button variant="outline" size="icon" onClick={speakWord}>
+                    <Volume2 className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm">Listen to the word</span>
+                </div>
+              </div>
+
+              <div className="bg-muted p-4 rounded-md">
+                <h3 className="font-medium mb-2">Sound Mnemonic</h3>
+                <div className="flex items-center gap-4">
+                  <div>
+                    <p className="font-medium">{currentMnemonic.mnemonic}</p>
+                    <p className="text-sm text-muted-foreground mt-1">{currentMnemonic.soundDescription}</p>
+                  </div>
+                  <Button variant="outline" size="icon" onClick={speakMnemonic}>
+                    <Volume2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
+              <div className="bg-primary/5 p-4 rounded-md">
+                <h3 className="font-medium mb-2">Practice Saying It</h3>
+                <p className="text-sm">
+                  Say both the word and its mnemonic out loud several times to create a strong sound association.
+                </p>
+                <div className="flex items-center gap-2 mt-3">
+                  <span className="font-medium">{currentMnemonic.word}</span>
+                  <span>→</span>
+                  <span className="font-medium">{currentMnemonic.mnemonic}</span>
+                </div>
+              </div>
+            </>
+          )}
+
+          {mode === "practice" && (
+            <>
+              <div className="text-center">
+                <h2 className="text-3xl font-bold mb-2">{currentMnemonic.word}</h2>
+                <p className="text-muted-foreground">{currentMnemonic.definition}</p>
+                <Button variant="outline" size="sm" className="mt-2" onClick={speakWord}>
+                  <Volume2 className="mr-2 h-4 w-4" />
+                  Listen to the word
+                </Button>
+              </div>
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <label htmlFor="answer" className="text-sm font-medium">
+                    What is the sound mnemonic for this word?
+                  </label>
+                  <Input
+                    id="answer"
+                    value={userAnswer}
+                    onChange={(e) => setUserAnswer(e.target.value)}
+                    placeholder="Type the mnemonic word..."
+                    className={
+                      isCorrect === true
+                        ? "border-green-500 focus-visible:ring-green-500"
+                        : isCorrect === false
+                          ? "border-red-500 focus-visible:ring-red-500"
+                          : ""
+                    }
+                    disabled={isCorrect === true}
+                  />
+                </div>
+
+                <div className="flex justify-between">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowHint(true)}
+                    disabled={showHint || isCorrect === true}
+                  >
+                    <HelpCircle className="mr-2 h-4 w-4" />
+                    Show Hint
+                  </Button>
+
+                  {isCorrect !== true && (
+                    <Button type="submit" disabled={!userAnswer.trim()}>
+                      Check Answer
+                    </Button>
+                  )}
+                </div>
+              </form>
+
+              {showHint && (
+                <div className="bg-amber-50 border border-amber-200 p-4 rounded-md">
+                  <h3 className="font-medium text-amber-800 mb-1">Hint</h3>
+                  <p className="text-amber-700">{currentMnemonic.soundDescription}</p>
+                  <p className="text-amber-700 mt-2">
+                    The mnemonic starts with "{currentMnemonic.mnemonic.charAt(0)}" and has{" "}
+                    {currentMnemonic.mnemonic.length} letters.
+                  </p>
+                </div>
+              )}
+
+              {isCorrect === true && (
+                <div className="flex items-center gap-2 text-green-600 mt-4">
+                  <Check className="h-5 w-5" />
+                  <span>Correct! The mnemonic is "{currentMnemonic.mnemonic}".</span>
+                </div>
+              )}
+
+              {isCorrect === false && (
+                <div className="flex items-center gap-2 text-red-600 mt-4">
+                  <X className="h-5 w-5" />
+                  <span>Not quite right. Try using the hint to help you remember.</span>
+                </div>
+              )}
+            </>
+          )}
+        </CardContent>
+        <CardFooter>
+          {mode === "learn" || isCorrect === true ? (
+            <Button onClick={handleNext} className="w-full">
+              {currentIndex < soundMnemonics.length - 1 ? "Next Word" : mode === "learn" ? "Start Practice" : "Finish"}
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          ) : (
+            <Button variant="outline" onClick={() => setMode("learn")} className="w-full">
+              <Repeat className="mr-2 h-4 w-4" />
+              Review This Word
+            </Button>
+          )}
+        </CardFooter>
+      </Card>
+    </div>
+  )
+}
+
