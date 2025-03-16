@@ -211,10 +211,7 @@ export default function SpeakingChallengesPage() {
         { label: "Speaking Challenges", href: "/speaking-listening/speaking-challenges", active: true }
       ]} />
 
-      <div className="flex justify-  active: true }
-      ]} />
-
-      <div className=\"flex justify-between items-center">
+      <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Speaking Challenges</h1>
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">
@@ -353,4 +350,3 @@ export default function SpeakingChallengesPage() {
     </div>
   )
 }
-
