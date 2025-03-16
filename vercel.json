@@ -1,13 +1,3 @@
 {
-    "builds": [
-      {
-        "config": {
-          "buildCommand": "DISABLE_ESLINT_PLUGIN=true CI=false npm install --legacy-peer-deps && DISABLE_ESLINT_PLUGIN=true CI=false npm run build"
-        }
-      }
-    ],
-    "env": {
-      "DISABLE_ESLINT_PLUGIN": "true",
-      "CI": "false"
-    }
+    "installCommand": "npm install --legacy-peer-deps"
   }
