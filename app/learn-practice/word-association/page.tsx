@@ -40,17 +40,26 @@ export default function WordAssociationPage() {
     async function loadWordSets() {
       setIsLoading(true)
       try {
-        // Generate 5 word sets
-        const setPromises = Array(5).fill(0).map((_, i) => 
-          generateWordSet({ difficulty: selectedDifficulty || undefined })
-            .then(set => ({
-              ...set,
-              id: `set-${i}`,
-            }))
-        )
+        const newSets: WordSet[] = []
         
-        const generatedSets = await Promise.all(setPromises)
-        setWordSets(generatedSets)
+        // Generate 5 sets sequentially
+        for (let i = 0; i < 5; i++) {
+          const set = await generateWordSet({ difficulty: selectedDifficulty || undefined })
+          const setWithId = {
+            ...set,
+            id: `set-${i}`,
+          }
+          newSets.push(setWithId)
+          
+          // Show the first set immediately and stop loading indicator
+          if (i === 0) {
+            setWordSets([setWithId])
+            setIsLoading(false)
+          } else {
+            // Update with all sets generated so far
+            setWordSets([...newSets])
+          }
+        }
         
         toast({
           title: "Word sets loaded",
@@ -63,7 +72,6 @@ export default function WordAssociationPage() {
           description: "Please try again later",
           variant: "destructive",
         })
-      } finally {
         setIsLoading(false)
       }
     }

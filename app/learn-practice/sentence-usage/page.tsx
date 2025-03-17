@@ -38,35 +38,43 @@ export default function SentenceUsagePage() {
     async function loadPracticeWords() {
       setIsLoading(true)
       try {
-        // Generate 5 random words
-        const wordPromises = Array(5).fill(0).map(() => 
-          generateRandomWord({ difficulty: selectedDifficulty || undefined })
-        )
+        const newWords: WordDetails[] = [];
         
-        const generatedWords = await Promise.all(wordPromises)
-        setPracticeWords(generatedWords)
+        // Generate 5 words sequentially
+        for (let i = 0; i < 5; i++) {
+          const word = await generateRandomWord({ difficulty: selectedDifficulty || undefined });
+          newWords.push(word);
+          
+          // Show the first word immediately and stop loading indicator
+          if (i === 0) {
+            setPracticeWords([word]);
+            setIsLoading(false);
+          } else {
+            // Update with all words generated so far
+            setPracticeWords([...newWords]);
+          }
+        }
         
         toast({
           title: "Practice words loaded",
           description: "Your personalized vocabulary words are ready to practice",
-        })
+        });
       } catch (error) {
-        console.error("Error loading practice words:", error)
+        console.error("Error loading practice words:", error);
         toast({
           title: "Error loading practice words",
           description: "Please try again later",
           variant: "destructive",
-        })
-      } finally {
-        setIsLoading(false)
+        });
+        setIsLoading(false);
       }
     }
 
     if (!isInitialized.current) {
-      isInitialized.current = true
-      loadPracticeWords()
+      isInitialized.current = true;
+      loadPracticeWords();
     }
-  }, [selectedDifficulty, toast])
+  }, [selectedDifficulty, toast]);
 
   useEffect(() => {
     // Update progress when current index changes

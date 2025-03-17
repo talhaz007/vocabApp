@@ -31,41 +31,53 @@ export default function FlashcardsPage() {
     async function loadFlashcards() {
       setIsLoading(true)
       try {
-        // Generate 5 random words
-        const wordPromises = Array(5).fill(0).map((_, i) => 
-          generateRandomWord({ difficulty: selectedDifficulty || undefined })
-            .then(word => ({
-              ...word,
-              id: `generated-${i}`,
-              lastReviewed: null,
-              nextReview: null
-            }))
-        )
+        const newFlashcards: (WordDetails & { 
+          id: string, 
+          lastReviewed: Date | null,
+          nextReview: Date | null
+        })[] = [];
         
-        const generatedWords = await Promise.all(wordPromises)
-        setFlashcards(generatedWords)
+        // Generate 5 flashcards sequentially
+        for (let i = 0; i < 5; i++) {
+          const word = await generateRandomWord({ difficulty: selectedDifficulty || undefined });
+          const flashcard = {
+            ...word,
+            id: `generated-${i}`,
+            lastReviewed: null,
+            nextReview: null
+          };
+          newFlashcards.push(flashcard);
+          
+          // Show the first flashcard immediately and stop loading indicator
+          if (i === 0) {
+            setFlashcards([flashcard]);
+            setIsLoading(false);
+          } else {
+            // Update with all flashcards generated so far
+            setFlashcards([...newFlashcards]);
+          }
+        }
         
         toast({
           title: "Flashcards loaded",
           description: "Your personalized vocabulary words are ready to learn",
-        })
+        });
       } catch (error) {
-        console.error("Error loading flashcards:", error)
+        console.error("Error loading flashcards:", error);
         toast({
           title: "Error loading flashcards",
           description: "Please try again later",
           variant: "destructive",
-        })
-      } finally {
-        setIsLoading(false)
+        });
+        setIsLoading(false);
       }
     }
     
     if (!isInitialized.current) {
-      isInitialized.current = true
-      loadFlashcards()
+      isInitialized.current = true;
+      loadFlashcards();
     }
-  }, [selectedDifficulty, toast])
+  }, [selectedDifficulty, toast]);
 
   useEffect(() => {
     // Update progress when current index changes
