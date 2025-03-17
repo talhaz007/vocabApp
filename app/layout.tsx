@@ -9,7 +9,7 @@ import { AiChat } from "@/components/ai-chat"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "VocabGenius - Enhance Your Vocabulary",
+  title: "Vocabulary - Enhance Your Vocabulary",
   description: "Enhance your vocabulary with flashcards, mnemonics, adaptive learning, and progress feedback.",
   generator: "v0.dev",
 }

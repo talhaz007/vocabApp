@@ -21,7 +21,7 @@ export function AiChat() {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "welcome",
-      content: "Hi there! I'm your VocabGenius assistant. How can I help you with your vocabulary learning today?",
+      content: "Hi there! I'm your Vocabulary assistant. How can I help you with your vocabulary learning today?",
       sender: "ai",
       timestamp: new Date(),
     },
@@ -104,7 +104,7 @@ export function AiChat() {
           <CardHeader className="bg-primary text-primary-foreground py-3">
             <CardTitle className="text-sm font-medium flex items-center">
               <Bot className="h-4 w-4 mr-2" />
-              VocabGenius Assistant
+              Vocabulary Assistant
             </CardTitle>
           </CardHeader>
           <CardContent className="p-3 h-80 overflow-y-auto">

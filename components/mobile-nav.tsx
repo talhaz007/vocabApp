@@ -52,7 +52,7 @@ export function MobileNav() {
       <SheetContent side="right" className="pr-0">
         <div className="px-7">
           <Link href="/dashboard" className="flex items-center" onClick={() => setOpen(false)}>
-            <span className="font-bold">VocabGenius</span>
+            <span className="font-bold">Vocabulary</span>
           </Link>
         </div>
         <nav className="mt-8 flex flex-col gap-4">

@@ -45,7 +45,7 @@ export default function DashboardPage() {
     <div className="container py-8">
       {/* Welcome Section */}
       <section className="text-center space-y-4 mb-12">
-        <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">VocabGenius</h1>
+        <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">Vocabulary</h1>
         <p className="text-muted-foreground max-w-[600px] mx-auto">
           Enhance your vocabulary with flashcards, mnemonics, adaptive learning, and progress feedback.
         </p>

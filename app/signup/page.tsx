@@ -33,7 +33,7 @@ export default function SignupPage() {
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold">Create an account</CardTitle>
           <CardDescription>
-            Enter your information to create a VocabGenius account
+            Enter your information to create a Vocabulary account
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
