@@ -213,6 +213,8 @@ export default function WordAssociationPage() {
     setTimerActive(false)
     setShowAlternatives(false)
     setAlternativeSentences([])
+
+    isInitialized.current = false;
   }
 
   if (isLoading) {
@@ -267,9 +269,9 @@ export default function WordAssociationPage() {
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">
-              {currentIndex + 1} of {wordSets.length}
+              {currentIndex + 1} of 5
             </span>
-            <Progress value={progress} className="w-32" />
+            {/* <Progress value={progress} className="w-32" /> */}
           </div>
           
           <div className="flex gap-2">

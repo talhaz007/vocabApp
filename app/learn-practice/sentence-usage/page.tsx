@@ -173,6 +173,8 @@ export default function SentenceUsagePage() {
     setHintLevel(0)
     setScore(0)
     setStreak(0)
+
+    isInitialized.current = false;
   }
 
   if (isLoading) {

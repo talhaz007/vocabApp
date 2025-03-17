@@ -198,6 +198,8 @@ export default function FlashcardsPage() {
     setSelectedDifficulty(difficulty)
     setCurrentIndex(0)
     setIsFlipped(false)
+    // Reset initialization flag to trigger flashcard reload
+    isInitialized.current = false;
   }
 
   // Update the handleFinish function to use router
