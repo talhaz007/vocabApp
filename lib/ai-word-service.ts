@@ -68,7 +68,7 @@ export async function generateRandomWord(
     `
 
     const { text } = await generateText({
-      model: openai("gpt-4o", { apiKey: process.env.OPENAI_API_KEY }),
+      model: openai("gpt-4o-mini", { apiKey: process.env.OPENAI_API_KEY }),
       prompt,
     })
 
@@ -141,7 +141,7 @@ export async function generateWordSet(
     `
 
     const { text } = await generateText({
-      model: openai("gpt-4o", { apiKey: process.env.OPENAI_API_KEY }),
+      model: openai("gpt-4o-mini", { apiKey: process.env.OPENAI_API_KEY }),
       prompt,
     })
 
@@ -200,7 +200,7 @@ export async function evaluateSentence(
     `
 
     const { text } = await generateText({
-      model: openai("gpt-4o", { apiKey: process.env.OPENAI_API_KEY }),
+      model: openai("gpt-4o-mini", { apiKey: process.env.OPENAI_API_KEY }),
       prompt,
     })
 
