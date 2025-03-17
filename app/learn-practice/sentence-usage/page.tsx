@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { Check, X, HelpCircle, ArrowRight, Loader2 } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { Check, X, HelpCircle, ArrowRight, ArrowLeft, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -19,6 +20,7 @@ import { Breadcrumb } from "@/components/breadcrumb"
 import { generateRandomWord, saveLearnedWord, type WordDetails } from "@/lib/ai-word-service"
 
 export default function SentenceUsagePage() {
+  const router = useRouter()
   const [practiceWords, setPracticeWords] = useState<WordDetails[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [userInput, setUserInput] = useState("")
@@ -139,6 +141,20 @@ export default function SentenceUsagePage() {
     }
   }
 
+  const handlePreviousWord = () => {
+    if (currentIndex > 0) {
+      setCurrentIndex(currentIndex - 1)
+      setUserInput("")
+      setIsCorrect(null)
+      setShowHint(false)
+      setHintLevel(0)
+    }
+  }
+
+  const handleFinish = () => {
+    router.push("/learn-practice")
+  }
+
   const showNextHint = () => {
     if (practiceWords.length === 0) return
     
@@ -209,13 +225,16 @@ export default function SentenceUsagePage() {
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Sentence Usage</h1>
         <div className="flex items-center gap-4">
-          <div className="bg-muted px-3 py-1 rounded-md">
+          <span className="text-sm text-muted-foreground">
+            {currentIndex + 1} of 5
+          </span>
+          {/* <div className="bg-muted px-3 py-1 rounded-md">
             <span className="font-medium">Score: {score}</span>
           </div>
           <div className="bg-muted px-3 py-1 rounded-md">
             <span className="font-medium">Streak: {streak}</span>
           </div>
-          <Progress value={progress} className="w-32" />
+          <Progress value={progress} className="w-32" /> */}
         </div>
       </div>
       
@@ -357,9 +376,9 @@ export default function SentenceUsagePage() {
                     <Check className="h-5 w-5" />
                     <span>Correct! The word is "{currentWord.word}"</span>
                   </div>
-                  <Button onClick={handleNextWord}>
+                  {/* <Button onClick={handleNextWord}>
                     Next Word <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
+                  </Button> */}
                 </div>
               ) : (
                 <div className="flex w-full justify-between">
@@ -378,6 +397,29 @@ export default function SentenceUsagePage() {
             </div>
           </form>
         </CardContent>
+        <CardFooter className="pt-6">
+          <div className="flex justify-between w-full">
+            <Button 
+              variant="outline" 
+              onClick={handlePreviousWord} 
+              disabled={currentIndex === 0}
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" /> Previous
+            </Button>
+            
+            {
+              currentIndex === practiceWords.length - 1 ? (
+                <Button onClick={handleFinish}>
+                  Finish <Check className="ml-2 h-4 w-4" />
+                </Button>
+              ) : (
+                <Button onClick={handleNextWord}>
+                  Next <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              )
+            }
+          </div>
+        </CardFooter>
       </Card>
     </div>
   )

@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { ArrowLeft, ArrowRight, Repeat, Volume2, Loader2 } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { ArrowLeft, ArrowRight, Repeat, Volume2, Loader2, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -12,6 +13,7 @@ import { Breadcrumb } from "@/components/breadcrumb"
 import { generateRandomWord, saveLearnedWord, type WordDetails } from "@/lib/ai-word-service"
 
 export default function FlashcardsPage() {
+  const router = useRouter()
   const [flashcards, setFlashcards] = useState<(WordDetails & { 
     id: string, 
     lastReviewed: Date | null,
@@ -198,6 +200,12 @@ export default function FlashcardsPage() {
     setIsFlipped(false)
   }
 
+  // Update the handleFinish function to use router
+  const handleFinish = () => {
+    // Navigate back to the learn-practice page using Next.js router
+    router.push("/learn-practice")
+  }
+
   if (isLoading) {
     return (
       <div className="container max-w-4xl py-8 space-y-6">
@@ -250,9 +258,9 @@ export default function FlashcardsPage() {
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">
-              {currentIndex + 1} of {flashcards.length}
+              {currentIndex + 1} of 5
             </span>
-            <Progress value={progress} className="w-32" />
+            {/* <Progress value={progress} className="w-32" /> */}
           </div>
           
           <div className="flex gap-2">
@@ -330,12 +338,12 @@ export default function FlashcardsPage() {
                   <div className="bg-muted p-3 rounded-md">
                     <p className="italic text-xs line-clamp-3">{currentFlashcard.mnemonic}</p>
                   </div>
-                  <div className="mt-1 flex justify-end">
+                  {/* <div className="mt-1 flex justify-end">
                     <Button variant="ghost" size="sm" onClick={handleNewMnemonic} disabled={isGeneratingMnemonic} className="h-7 text-xs">
                       <Repeat className="h-3 w-3 mr-1" />
                       {isGeneratingMnemonic ? "Generating..." : "New mnemonic"}
                     </Button>
-                  </div>
+                  </div> */}
                 </div>
                 
                 {currentFlashcard.examples && currentFlashcard.examples.length > 0 && (
@@ -391,9 +399,16 @@ export default function FlashcardsPage() {
         <Button variant="outline" onClick={handlePrevious} disabled={currentIndex === 0}>
           <ArrowLeft className="mr-2 h-4 w-4" /> Previous
         </Button>
-        <Button onClick={handleNext} disabled={currentIndex === flashcards.length - 1}>
-          Next <ArrowRight className="ml-2 h-4 w-4" />
-        </Button>
+        
+        {currentIndex === 4 ? (
+          <Button onClick={handleFinish} variant="default">
+            Finish <Check className="ml-2 h-4 w-4" />
+          </Button>
+        ) : (
+          <Button onClick={handleNext} disabled={currentIndex === flashcards.length - 1}>
+            Next <ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
+        )}
       </div>
     </div>
   )

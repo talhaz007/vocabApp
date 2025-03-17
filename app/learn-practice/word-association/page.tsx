@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { Check, X, Clock, Lightbulb, ArrowRight, Loader2 } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { Check, X, Clock, Lightbulb, ArrowRight, Loader2, ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
@@ -20,6 +21,7 @@ interface WordSet {
 }
 
 export default function WordAssociationPage() {
+  const router = useRouter()
   const [wordSets, setWordSets] = useState<WordSet[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [selectedWords, setSelectedWords] = useState<string[]>([])
@@ -182,6 +184,24 @@ export default function WordAssociationPage() {
     }
   }
 
+  const handlePreviousWord = () => {
+    if (currentIndex > 0) {
+      setCurrentIndex(currentIndex - 1)
+      setSelectedWords([])
+      setUserSentence("")
+      setFeedback(null)
+      setFeedbackType(null)
+      setTimeLeft(null)
+      setTimerActive(false)
+      setShowAlternatives(false)
+      setAlternativeSentences([])
+    }
+  }
+
+  const handleFinish = () => {
+    router.push("/learn-practice")
+  }
+
   const handleChangeDifficulty = (difficulty: "easy" | "medium" | "hard" | null) => {
     setSelectedDifficulty(difficulty)
     setCurrentIndex(0)
@@ -293,7 +313,7 @@ export default function WordAssociationPage() {
             Word Association: {currentWordSet.category}
           </CardTitle>
           <p className="text-muted-foreground">
-            Select 2-5 words from below and create a sentence that connects them meaningfully.
+            Select 2-3 words from below and create a sentence that connects them meaningfully.
           </p>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -339,6 +359,31 @@ export default function WordAssociationPage() {
             />
           </div>
 
+          {/* Action buttons for Reset and Check */}
+          <div className="flex justify-between">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSelectedWords([])
+                setUserSentence("")
+                setFeedback(null)
+                setFeedbackType(null)
+                setTimeLeft(null)
+                setTimerActive(false)
+                setShowAlternatives(false)
+              }}
+              disabled={selectedWords.length === 0 && userSentence === ""}
+            >
+              Reset
+            </Button>
+            
+            {!feedbackType && (
+              <Button onClick={handleSubmit} disabled={selectedWords.length < 2 || !userSentence.trim()}>
+                Check Sentence
+              </Button>
+            )}
+          </div>
+
           {feedback && (
             <div
               className={`p-4 rounded-md ${
@@ -381,35 +426,26 @@ export default function WordAssociationPage() {
             </div>
           )}
         </CardContent>
-        <CardFooter className="flex justify-between">
+        <CardFooter className="flex justify-between pt-6">
           <Button
             variant="outline"
-            onClick={() => {
-              setSelectedWords([])
-              setUserSentence("")
-              setFeedback(null)
-              setFeedbackType(null)
-              setTimeLeft(null)
-              setTimerActive(false)
-              setShowAlternatives(false)
-            }}
-            disabled={selectedWords.length === 0 && userSentence === ""}
+            onClick={handlePreviousWord}
+            disabled={currentIndex === 0}
           >
-            Reset
+            <ArrowLeft className="mr-2 h-4 w-4" /> Previous
           </Button>
-
-          <div className="flex gap-2">
-            {!feedbackType && (
-              <Button onClick={handleSubmit} disabled={selectedWords.length < 2 || !userSentence.trim()}>
-                Check Sentence
+          
+          {
+            currentIndex === 4 ? (
+              <Button onClick={handleFinish}>
+                Finish <Check className="ml-2 h-4 w-4" />
               </Button>
-            )}
-            {feedbackType === "success" && (
+            ) : (
               <Button onClick={handleNextSet}>
-                Next Set <ArrowRight className="ml-2 h-4 w-4" />
+                Next <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
-            )}
-          </div>
+            )
+          }
         </CardFooter>
       </Card>
     </div>
