@@ -23,6 +23,8 @@ export default function SentenceUsagePage() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [userInput, setUserInput] = useState("")
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null)
+  const [showHint, setShowHint] = useState(false)
+  const [hintLevel, setHintLevel] = useState(0)
   const [progress, setProgress] = useState(0)
   const [score, setScore] = useState(0)
   const [streak, setStreak] = useState(0)
@@ -100,10 +102,11 @@ export default function SentenceUsagePage() {
       })
     } else {
       setIsCorrect(false)
+      setStreak(0)
 
       toast({
         title: "Not quite right",
-        description: "",
+        description: "Try again or use a hint",
         variant: "destructive",
       })
     }
@@ -114,9 +117,12 @@ export default function SentenceUsagePage() {
       setCurrentIndex(currentIndex + 1)
       setUserInput("")
       setIsCorrect(null)
+      setShowHint(false)
+      setHintLevel(0)
     } else {
       toast({
         title: "Practice complete!",
+        description: `Final score: ${score}`,
       })
     }
   }
@@ -191,6 +197,12 @@ export default function SentenceUsagePage() {
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Sentence Usage</h1>
         <div className="flex items-center gap-4">
+          <div className="bg-muted px-3 py-1 rounded-md">
+            <span className="font-medium">Score: {score}</span>
+          </div>
+          <div className="bg-muted px-3 py-1 rounded-md">
+            <span className="font-medium">Streak: {streak}</span>
+          </div>
           <Progress value={progress} className="w-32" />
         </div>
       </div>
@@ -358,5 +370,3 @@ export default function SentenceUsagePage() {
     </div>
   )
 }
-
-

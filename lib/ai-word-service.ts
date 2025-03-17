@@ -1,10 +1,4 @@
-import { generateText } from "ai"
-import { createOpenAI } from "@ai-sdk/openai"
 import { z } from "zod"
-
-const openai = createOpenAI({
-    apiKey: process.env.OPENAI_API_KEY // should ideally be loaded from external place such as env variable
- });
 
 // Define Zod schemas for validation
 const WordDetailsSchema = z.object({
@@ -47,48 +41,23 @@ export async function generateRandomWord(
   }
 ): Promise<WordDetails> {
   try {
-    const difficulty = options?.difficulty || ["easy", "medium", "hard"][Math.floor(Math.random() * 3)]
-    const category = options?.category || ""
-    
-    const prompt = `
-      Generate a vocabulary word ${difficulty ? `with ${difficulty} difficulty` : ""} 
-      ${category ? `from the category "${category}"` : ""}.
-      
-      Return the result as a JSON object with the following structure:
-      {
-        "word": "the vocabulary word",
-        "definition": "clear and concise definition",
-        "mnemonic": "a memorable mnemonic to help remember the word",
-        "difficulty": "easy/medium/hard",
-        "hints": ["4 progressive hints to help guess the word", "with the last hint", "showing some letters", "W _ _ d"],
-        "examples": ["3 example sentences using the word in context"],
-        "synonyms": ["3-5 synonyms"],
-        "antonyms": ["3-5 antonyms if applicable, otherwise empty array"]
-      }
-    `
-
-    const { text } = await generateText({
-      model: openai("gpt-4o-mini", { apiKey: process.env.OPENAI_API_KEY }),
-      prompt,
+    const response = await fetch('/api/vocabulary/random-word', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        difficulty: options?.difficulty,
+        category: options?.category,
+      }),
     })
-
-    // Parse and validate the JSON response
-    let parsedData;
-    try {
-      // Try to parse the response directly
-      parsedData = JSON.parse(text);
-    } catch (parseError) {
-      // If direct parsing fails, try to extract JSON from markdown code blocks
-      const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-      if (jsonMatch && jsonMatch[1]) {
-        parsedData = JSON.parse(jsonMatch[1].trim());
-      } else {
-        throw parseError;
-      }
+    
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`)
     }
     
-    const validatedData = WordDetailsSchema.parse(parsedData)
-    return validatedData
+    const data = await response.json()
+    return WordDetailsSchema.parse(data)
   } catch (error) {
     console.error("Error generating word:", error)
     // Return a fallback word if generation fails
@@ -124,44 +93,23 @@ export async function generateWordSet(
   }
 ): Promise<WordSet> {
   try {
-    const difficulty = options?.difficulty || ["easy", "medium", "hard"][Math.floor(Math.random() * 3)]
-    const category = options?.category || ""
-    
-    const prompt = `
-      Generate a set of 4-6 related words ${difficulty ? `with ${difficulty} difficulty` : ""} 
-      ${category ? `from the category "${category}"` : ""}.
-      
-      Return the result as a JSON object with the following structure:
-      {
-        "words": ["array of related words"],
-        "category": "the category or theme these words belong to",
-        "difficulty": "easy/medium/hard",
-        "possibleSentences": ["3 example sentences that use all or most of these words together"]
-      }
-    `
-
-    const { text } = await generateText({
-      model: openai("gpt-4o-mini", { apiKey: process.env.OPENAI_API_KEY }),
-      prompt,
+    const response = await fetch('/api/vocabulary/word-set', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        difficulty: options?.difficulty,
+        category: options?.category,
+      }),
     })
-
-    // Parse and validate the JSON response
-    let parsedData;
-    try {
-      // Try to parse the response directly
-      parsedData = JSON.parse(text);
-    } catch (parseError) {
-      // If direct parsing fails, try to extract JSON from markdown code blocks
-      const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-      if (jsonMatch && jsonMatch[1]) {
-        parsedData = JSON.parse(jsonMatch[1].trim());
-      } else {
-        throw parseError;
-      }
+    
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`)
     }
     
-    const validatedData = WordSetSchema.parse(parsedData)
-    return validatedData
+    const data = await response.json()
+    return WordSetSchema.parse(data)
   } catch (error) {
     console.error("Error generating word set:", error)
     // Return a fallback word set if generation fails
@@ -186,41 +134,23 @@ export async function evaluateSentence(
   requiredWords: string[]
 ): Promise<SentenceEvaluation> {
   try {
-    const prompt = `
-      Evaluate this sentence: "${sentence}"
-      
-      It should include these words: ${requiredWords.join(", ")}
-      
-      Return the result as a JSON object with the following structure:
-      {
-        "isValid": true/false (whether all words are used correctly),
-        "feedback": "detailed feedback on the sentence structure, grammar, and word usage",
-        "alternativeSentences": ["3 alternative sentences using the same words, if the original is valid"]
-      }
-    `
-
-    const { text } = await generateText({
-      model: openai("gpt-4o-mini", { apiKey: process.env.OPENAI_API_KEY }),
-      prompt,
+    const response = await fetch('/api/vocabulary/evaluate-sentence', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        sentence,
+        requiredWords,
+      }),
     })
-
-    // Parse and validate the JSON response
-    let parsedData;
-    try {
-      // Try to parse the response directly
-      parsedData = JSON.parse(text);
-    } catch (parseError) {
-      // If direct parsing fails, try to extract JSON from markdown code blocks
-      const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-      if (jsonMatch && jsonMatch[1]) {
-        parsedData = JSON.parse(jsonMatch[1].trim());
-      } else {
-        throw parseError;
-      }
+    
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`)
     }
     
-    const validatedData = SentenceEvaluationSchema.parse(parsedData)
-    return validatedData
+    const data = await response.json()
+    return SentenceEvaluationSchema.parse(data)
   } catch (error) {
     console.error("Error evaluating sentence:", error)
     // Return a fallback evaluation if generation fails
@@ -243,13 +173,26 @@ export async function saveLearnedWord(
     notes?: string
   }
 ): Promise<boolean> {
-  // This is a mock implementation
-  // In a real app, you would save this to your database
-  console.log("Saving word to user's learned words:", wordDetails.word, userProgress)
-  
-  // Simulate API call delay
-  await new Promise(resolve => setTimeout(resolve, 500))
-  
-  // Return success
-  return true
+  try {
+    const response = await fetch('/api/vocabulary/save-learned-word', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        wordDetails,
+        userProgress,
+      }),
+    })
+    
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`)
+    }
+    
+    const data = await response.json()
+    return data.success
+  } catch (error) {
+    console.error("Error saving learned word:", error)
+    return false
+  }
 } 
