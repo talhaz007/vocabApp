@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Check, X, Clock, Lightbulb, ArrowRight } from "lucide-react"
+import { Check, X, Clock, Lightbulb, ArrowRight, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
@@ -9,49 +9,18 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { useToast } from "@/hooks/use-toast"
 import { Breadcrumb } from "@/components/breadcrumb"
+import { generateWordSet, evaluateSentence } from "@/lib/ai-word-service"
 
 interface WordSet {
   id: string
   words: string[]
   difficulty: "easy" | "medium" | "hard"
   category: string
+  possibleSentences: string[]
 }
 
-// Sample word sets
-const wordSets: WordSet[] = [
-  {
-    id: "1",
-    words: ["Eloquent", "Persuasive", "Debate", "Audience"],
-    difficulty: "medium",
-    category: "Communication",
-  },
-  {
-    id: "2",
-    words: ["Ephemeral", "Fleeting", "Moment", "Memory"],
-    difficulty: "hard",
-    category: "Time",
-  },
-  {
-    id: "3",
-    words: ["Perseverance", "Challenge", "Overcome", "Success"],
-    difficulty: "medium",
-    category: "Achievement",
-  },
-  {
-    id: "4",
-    words: ["Ubiquitous", "Prevalent", "Technology", "Modern"],
-    difficulty: "hard",
-    category: "Technology",
-  },
-  {
-    id: "5",
-    words: ["Serendipity", "Chance", "Discovery", "Fortunate"],
-    difficulty: "medium",
-    category: "Luck",
-  },
-]
-
 export default function WordAssociationPage() {
+  const [wordSets, setWordSets] = useState<WordSet[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [selectedWords, setSelectedWords] = useState<string[]>([])
   const [userSentence, setUserSentence] = useState("")
@@ -62,12 +31,52 @@ export default function WordAssociationPage() {
   const [timerActive, setTimerActive] = useState(false)
   const [showAlternatives, setShowAlternatives] = useState(false)
   const [alternativeSentences, setAlternativeSentences] = useState<string[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [selectedDifficulty, setSelectedDifficulty] = useState<"easy" | "medium" | "hard" | null>(null)
   const { toast } = useToast()
+
+  // Load initial word sets
+  useEffect(() => {
+    async function loadWordSets() {
+      setIsLoading(true)
+      try {
+        // Generate 5 word sets
+        const setPromises = Array(5).fill(0).map((_, i) => 
+          generateWordSet({ difficulty: selectedDifficulty || undefined })
+            .then(set => ({
+              ...set,
+              id: `set-${i}`,
+            }))
+        )
+        
+        const generatedSets = await Promise.all(setPromises)
+        setWordSets(generatedSets)
+        
+        toast({
+          title: "Word sets loaded",
+          description: "Your word association exercises are ready",
+        })
+      } catch (error) {
+        console.error("Error loading word sets:", error)
+        toast({
+          title: "Error loading word sets",
+          description: "Please try again later",
+          variant: "destructive",
+        })
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    
+    loadWordSets()
+  }, [selectedDifficulty, toast])
 
   useEffect(() => {
     // Update progress when current index changes
-    setProgress(((currentIndex + 1) / wordSets.length) * 100)
-  }, [currentIndex])
+    if (wordSets.length > 0) {
+      setProgress(((currentIndex + 1) / wordSets.length) * 100)
+    }
+  }, [currentIndex, wordSets.length])
 
   useEffect(() => {
     let timer: NodeJS.Timeout
@@ -97,7 +106,7 @@ export default function WordAssociationPage() {
     })
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (selectedWords.length < 2) {
       toast({
         title: "Not enough words selected",
@@ -116,29 +125,22 @@ export default function WordAssociationPage() {
       return
     }
 
-    // Check if all selected words are used in the sentence
-    const wordsUsed = selectedWords.filter((word) => userSentence.toLowerCase().includes(word.toLowerCase()))
-
-    if (wordsUsed.length === selectedWords.length) {
-      setFeedbackType("success")
-      setFeedback("Great job! Your sentence successfully connects all the selected words in a meaningful way.")
-
-      // Generate alternative sentences (simulated)
-      setAlternativeSentences([
-        `The ${selectedWords[0].toLowerCase()} speaker was ${selectedWords[1].toLowerCase()} in convincing the ${selectedWords[2].toLowerCase()}.`,
-        `During the ${selectedWords[2].toLowerCase()}, her ${selectedWords[0].toLowerCase()} style made her ${selectedWords[1].toLowerCase()}.`,
-        `The ${selectedWords[1].toLowerCase()} argument was delivered in an ${selectedWords[0].toLowerCase()} manner.`,
-      ])
-    } else {
+    try {
+      const result = await evaluateSentence(userSentence, selectedWords)
+      
+      if (result.isValid) {
+        setFeedbackType("success")
+        setFeedback(result.feedback)
+        setAlternativeSentences(result.alternativeSentences || [])
+      } else {
+        setFeedbackType("error")
+        setFeedback(result.feedback)
+      }
+    } catch (error) {
+      console.error("Error evaluating sentence:", error)
       setFeedbackType("error")
-      setFeedback(
-        `Your sentence is missing some of the selected words. Make sure to include: ${selectedWords
-          .filter((word) => !userSentence.toLowerCase().includes(word.toLowerCase()))
-          .join(", ")}.`,
-      )
+      setFeedback("We couldn't evaluate your sentence. Please try again.")
     }
-
-    setTimerActive(false)
   }
 
   const handleNextSet = () => {
@@ -151,12 +153,62 @@ export default function WordAssociationPage() {
       setTimeLeft(null)
       setTimerActive(false)
       setShowAlternatives(false)
+      setAlternativeSentences([])
     } else {
       toast({
-        title: "Exercise complete!",
-        description: "You've completed all word association exercises.",
+        title: "All sets completed!",
+        description: "You've completed all the word association exercises.",
       })
     }
+  }
+
+  const handleChangeDifficulty = (difficulty: "easy" | "medium" | "hard" | null) => {
+    setSelectedDifficulty(difficulty)
+    setCurrentIndex(0)
+    setSelectedWords([])
+    setUserSentence("")
+    setFeedback(null)
+    setFeedbackType(null)
+    setTimeLeft(null)
+    setTimerActive(false)
+    setShowAlternatives(false)
+    setAlternativeSentences([])
+  }
+
+  if (isLoading) {
+    return (
+      <div className="container max-w-4xl py-8 space-y-6">
+        <Breadcrumb
+          items={[
+            { label: "Learn & Practice", href: "/learn-practice", active: false },
+            { label: "Word Association", href: "/learn-practice/word-association", active: true },
+          ]}
+        />
+        <div className="flex flex-col items-center justify-center h-96">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+          <p className="text-lg text-muted-foreground">Generating word association exercises...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (wordSets.length === 0) {
+    return (
+      <div className="container max-w-4xl py-8 space-y-6">
+        <Breadcrumb
+          items={[
+            { label: "Learn & Practice", href: "/learn-practice", active: false },
+            { label: "Word Association", href: "/learn-practice/word-association", active: true },
+          ]}
+        />
+        <div className="flex flex-col items-center justify-center h-96">
+          <p className="text-lg text-muted-foreground">No word sets available. Please try again later.</p>
+          <Button onClick={() => window.location.reload()} className="mt-4">
+            Retry
+          </Button>
+        </div>
+      </div>
+    )
   }
 
   const currentWordSet = wordSets[currentIndex]
@@ -172,20 +224,54 @@ export default function WordAssociationPage() {
 
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Word Association</h1>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">
-            {currentIndex + 1} of {wordSets.length}
-          </span>
-          <Progress value={progress} className="w-32" />
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">
+              {currentIndex + 1} of {wordSets.length}
+            </span>
+            <Progress value={progress} className="w-32" />
+          </div>
+          
+          <div className="flex gap-2">
+            <Button 
+              size="sm" 
+              variant={selectedDifficulty === "easy" ? "default" : "outline"}
+              onClick={() => handleChangeDifficulty("easy")}
+            >
+              Easy
+            </Button>
+            <Button 
+              size="sm" 
+              variant={selectedDifficulty === "medium" ? "default" : "outline"}
+              onClick={() => handleChangeDifficulty("medium")}
+            >
+              Medium
+            </Button>
+            <Button 
+              size="sm" 
+              variant={selectedDifficulty === "hard" ? "default" : "outline"}
+              onClick={() => handleChangeDifficulty("hard")}
+            >
+              Hard
+            </Button>
+            {selectedDifficulty && (
+              <Button 
+                size="sm" 
+                variant="ghost"
+                onClick={() => handleChangeDifficulty(null)}
+              >
+                Clear
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
       <Card className="w-full">
         <CardHeader>
-          <div className="flex justify-between items-center">
-            <CardTitle>Create a Sentence</CardTitle>
-            <Badge variant="outline">{currentWordSet.category}</Badge>
-          </div>
+          <CardTitle className="text-2xl">
+            Word Association: {currentWordSet.category}
+          </CardTitle>
           <p className="text-muted-foreground">
             Select 2-5 words from below and create a sentence that connects them meaningfully.
           </p>
@@ -255,14 +341,14 @@ export default function WordAssociationPage() {
             </div>
           )}
 
-          {feedbackType === "success" && !showAlternatives && (
+          {feedbackType === "success" && !showAlternatives && alternativeSentences.length > 0 && (
             <Button variant="outline" onClick={() => setShowAlternatives(true)}>
               <Lightbulb className="mr-2 h-4 w-4" />
               Show Alternative Sentences
             </Button>
           )}
 
-          {showAlternatives && (
+          {showAlternatives && alternativeSentences.length > 0 && (
             <div className="bg-muted p-4 rounded-md">
               <h3 className="font-medium mb-2">Alternative Sentences</h3>
               <ul className="space-y-2">

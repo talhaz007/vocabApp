@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { ArrowLeft, ArrowRight, Repeat, Volume2 } from "lucide-react"
+import { ArrowLeft, ArrowRight, Repeat, Volume2, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -9,77 +9,65 @@ import { Progress } from "@/components/ui/progress"
 import { useToast } from "@/hooks/use-toast"
 import { generateMnemonic } from "@/lib/ai-helpers"
 import { Breadcrumb } from "@/components/breadcrumb"
-
-interface Flashcard {
-  id: string
-  word: string
-  definition: string
-  mnemonic: string
-  difficulty: "easy" | "medium" | "hard"
-  lastReviewed: Date | null
-  nextReview: Date | null
-}
-
-// Sample flashcards data
-const initialFlashcards: Flashcard[] = [
-  {
-    id: "1",
-    word: "Eloquent",
-    definition: "Fluent or persuasive in speaking or writing",
-    mnemonic: "Imagine an elephant giving a powerful speech—an eloquent elephant!",
-    difficulty: "medium",
-    lastReviewed: null,
-    nextReview: null,
-  },
-  {
-    id: "2",
-    word: "Ephemeral",
-    definition: "Lasting for a very short time",
-    mnemonic: "Think of a 'femoral' (thigh) pain that's thankfully ephemeral—it goes away quickly!",
-    difficulty: "hard",
-    lastReviewed: null,
-    nextReview: null,
-  },
-  {
-    id: "3",
-    word: "Perseverance",
-    definition: "Persistence in doing something despite difficulty or delay in achieving success",
-    mnemonic: "Per-severe-ance: Even through severe challenges, you advance with perseverance.",
-    difficulty: "medium",
-    lastReviewed: null,
-    nextReview: null,
-  },
-  {
-    id: "4",
-    word: "Ubiquitous",
-    definition: "Present, appearing, or found everywhere",
-    mnemonic: "Think 'ubi-quitous' sounds like 'you be quit-less'—you can't quit seeing it because it's everywhere!",
-    difficulty: "hard",
-    lastReviewed: null,
-    nextReview: null,
-  },
-  {
-    id: "5",
-    word: "Serendipity",
-    definition: "The occurrence and development of events by chance in a happy or beneficial way",
-    mnemonic: "Serene-dip-ity: When you take a serene dip in the sea and unexpectedly find a treasure.",
-    difficulty: "medium",
-    lastReviewed: null,
-    nextReview: null,
-  },
-]
+import { generateRandomWord, saveLearnedWord, type WordDetails } from "@/lib/ai-word-service"
 
 export default function FlashcardsPage() {
-  const [flashcards, setFlashcards] = useState<Flashcard[]>(initialFlashcards)
+  const [flashcards, setFlashcards] = useState<(WordDetails & { 
+    id: string, 
+    lastReviewed: Date | null,
+    nextReview: Date | null
+  })[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isFlipped, setIsFlipped] = useState(false)
   const [progress, setProgress] = useState(0)
   const [isGeneratingMnemonic, setIsGeneratingMnemonic] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [selectedDifficulty, setSelectedDifficulty] = useState<"easy" | "medium" | "hard" | null>(null)
   const { toast } = useToast()
+
+  // Load initial flashcards
+  useEffect(() => {
+    async function loadFlashcards() {
+      setIsLoading(true)
+      try {
+        // Generate 5 random words
+        const wordPromises = Array(5).fill(0).map((_, i) => 
+          generateRandomWord({ difficulty: selectedDifficulty || undefined })
+            .then(word => ({
+              ...word,
+              id: `generated-${i}`,
+              lastReviewed: null,
+              nextReview: null
+            }))
+        )
+        
+        const generatedWords = await Promise.all(wordPromises)
+        setFlashcards(generatedWords)
+        
+        toast({
+          title: "Flashcards loaded",
+          description: "Your personalized vocabulary words are ready to learn",
+        })
+      } catch (error) {
+        console.error("Error loading flashcards:", error)
+        toast({
+          title: "Error loading flashcards",
+          description: "Please try again later",
+          variant: "destructive",
+        })
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    
+    loadFlashcards()
+  }, [selectedDifficulty, toast])
 
   useEffect(() => {
     // Update progress when current index changes
-    setProgress(((currentIndex + 1) / flashcards.length) * 100)
+    if (flashcards.length > 0) {
+      setProgress(((currentIndex + 1) / flashcards.length) * 100)
+    }
   }, [currentIndex, flashcards.length])
 
   const handleNext = () => {
@@ -105,23 +93,41 @@ export default function FlashcardsPage() {
     setIsFlipped(!isFlipped)
   }
 
-  const handleMarkDifficulty = (difficulty: "easy" | "medium" | "hard") => {
+  const handleMarkDifficulty = async (difficulty: "easy" | "medium" | "hard") => {
+    const currentWord = flashcards[currentIndex]
+    const now = new Date()
+    
+    // Update the flashcard in state
     const updatedFlashcards = [...flashcards]
     updatedFlashcards[currentIndex] = {
       ...updatedFlashcards[currentIndex],
       difficulty,
-      lastReviewed: new Date(),
+      lastReviewed: now,
       // Set next review based on difficulty
       nextReview: new Date(
-        Date.now() + (difficulty === "easy" ? 3 : difficulty === "medium" ? 1 : 0.5) * 24 * 60 * 60 * 1000,
+        now.getTime() + (difficulty === "easy" ? 3 : difficulty === "medium" ? 1 : 0.5) * 24 * 60 * 60 * 1000,
       ),
     }
     setFlashcards(updatedFlashcards)
 
-    toast({
-      title: "Progress saved",
-      description: `Marked "${flashcards[currentIndex].word}" as ${difficulty}`,
-    })
+    // Save to user's learned words
+    try {
+      await saveLearnedWord(currentWord, {
+        mastery: difficulty === "easy" ? 90 : difficulty === "medium" ? 60 : 30,
+        lastPracticed: now,
+      })
+      
+      toast({
+        title: "Progress saved",
+        description: `Marked "${currentWord.word}" as ${difficulty}`,
+      })
+    } catch (error) {
+      toast({
+        title: "Error saving progress",
+        description: "Your progress couldn't be saved. Please try again.",
+        variant: "destructive",
+      })
+    }
 
     // Move to next card after marking
     if (currentIndex < flashcards.length - 1) {
@@ -133,12 +139,16 @@ export default function FlashcardsPage() {
   }
 
   const handleSpeak = () => {
+    if (flashcards.length === 0) return
+    
     const utterance = new SpeechSynthesisUtterance(flashcards[currentIndex].word)
     utterance.rate = 0.9 // Slightly slower for better clarity
     window.speechSynthesis.speak(utterance)
   }
 
   const handleNewMnemonic = async () => {
+    if (flashcards.length === 0) return
+    
     setIsGeneratingMnemonic(true)
     try {
       const currentWord = flashcards[currentIndex]
@@ -166,7 +176,50 @@ export default function FlashcardsPage() {
     }
   }
 
+  const handleChangeDifficulty = (difficulty: "easy" | "medium" | "hard" | null) => {
+    setSelectedDifficulty(difficulty)
+    setCurrentIndex(0)
+    setIsFlipped(false)
+  }
+
+  if (isLoading) {
+    return (
+      <div className="container max-w-4xl py-8 space-y-6">
+        <Breadcrumb
+          items={[
+            { label: "Learn & Practice", href: "/learn-practice", active: false },
+            { label: "Flashcards", href: "/learn-practice/flashcards", active: true },
+          ]}
+        />
+        <div className="flex flex-col items-center justify-center h-96">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+          <p className="text-lg text-muted-foreground">Generating personalized flashcards...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (flashcards.length === 0) {
+    return (
+      <div className="container max-w-4xl py-8 space-y-6">
+        <Breadcrumb
+          items={[
+            { label: "Learn & Practice", href: "/learn-practice", active: false },
+            { label: "Flashcards", href: "/learn-practice/flashcards", active: true },
+          ]}
+        />
+        <div className="flex flex-col items-center justify-center h-96">
+          <p className="text-lg text-muted-foreground">No flashcards available. Please try again later.</p>
+          <Button onClick={() => window.location.reload()} className="mt-4">
+            Retry
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
   const currentFlashcard = flashcards[currentIndex]
+  
   return (
     <div className="container max-w-4xl py-8 space-y-6">
       <Breadcrumb
@@ -178,11 +231,46 @@ export default function FlashcardsPage() {
 
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Flashcards</h1>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">
-            {currentIndex + 1} of {flashcards.length}
-          </span>
-          <Progress value={progress} className="w-32" />
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">
+              {currentIndex + 1} of {flashcards.length}
+            </span>
+            <Progress value={progress} className="w-32" />
+          </div>
+          
+          <div className="flex gap-2">
+            <Button 
+              size="sm" 
+              variant={selectedDifficulty === "easy" ? "default" : "outline"}
+              onClick={() => handleChangeDifficulty("easy")}
+            >
+              Easy
+            </Button>
+            <Button 
+              size="sm" 
+              variant={selectedDifficulty === "medium" ? "default" : "outline"}
+              onClick={() => handleChangeDifficulty("medium")}
+            >
+              Medium
+            </Button>
+            <Button 
+              size="sm" 
+              variant={selectedDifficulty === "hard" ? "default" : "outline"}
+              onClick={() => handleChangeDifficulty("hard")}
+            >
+              Hard
+            </Button>
+            {selectedDifficulty && (
+              <Button 
+                size="sm" 
+                variant="ghost"
+                onClick={() => handleChangeDifficulty(null)}
+              >
+                Clear
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -232,6 +320,19 @@ export default function FlashcardsPage() {
                   </Button>
                 </div>
               </div>
+              
+              {currentFlashcard.examples && currentFlashcard.examples.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-medium mb-2">Examples</h3>
+                  <ul className="space-y-2">
+                    {currentFlashcard.examples.map((example, index) => (
+                      <li key={index} className="text-sm bg-muted p-2 rounded">
+                        {example}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </CardContent>
             <CardFooter className="flex justify-between">
               <div className="flex gap-2">

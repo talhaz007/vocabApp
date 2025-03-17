@@ -13,7 +13,7 @@ export async function generateMnemonic(word: string, definition: string): Promis
     `
 
     const { text } = await generateText({
-      model: openai("gpt-4o"),
+      model: openai("gpt-4o", { apiKey: process.env.OPENAI_API_KEY }),
       prompt,
     })
 
