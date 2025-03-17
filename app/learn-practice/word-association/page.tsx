@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Check, X, Clock, Lightbulb, ArrowRight, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -34,7 +34,7 @@ export default function WordAssociationPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [selectedDifficulty, setSelectedDifficulty] = useState<"easy" | "medium" | "hard" | null>(null)
   const { toast } = useToast()
-
+  const isInitialized = useRef(false)
   // Load initial word sets
   useEffect(() => {
     async function loadWordSets() {
@@ -67,8 +67,11 @@ export default function WordAssociationPage() {
         setIsLoading(false)
       }
     }
-    
-    loadWordSets()
+
+    if (!isInitialized.current) {
+      isInitialized.current = true
+      loadWordSets()
+    }
   }, [selectedDifficulty, toast])
 
   useEffect(() => {

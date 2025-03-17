@@ -1,35 +1,27 @@
-import { z } from "zod"
+// Define TypeScript interfaces instead of Zod schemas
+export interface WordDetails {
+  word: string;
+  definition: string;
+  mnemonic: string;
+  difficulty: "easy" | "medium" | "hard";
+  hints: string[];
+  examples: string[];
+  synonyms: string[];
+  antonyms: string[];
+}
 
-// Define Zod schemas for validation
-const WordDetailsSchema = z.object({
-  word: z.string(),
-  definition: z.string(),
-  mnemonic: z.string(),
-  difficulty: z.enum(["easy", "medium", "hard"]),
-  hints: z.array(z.string()).min(1),
-  examples: z.array(z.string()).min(1),
-  synonyms: z.array(z.string()),
-  antonyms: z.array(z.string()),
-})
+export interface WordSet {
+  words: string[];
+  category: string;
+  difficulty: "easy" | "medium" | "hard";
+  possibleSentences: string[];
+}
 
-export type WordDetails = z.infer<typeof WordDetailsSchema>
-
-const WordSetSchema = z.object({
-  words: z.array(z.string()).min(2).max(6),
-  category: z.string(),
-  difficulty: z.enum(["easy", "medium", "hard"]),
-  possibleSentences: z.array(z.string()).min(1),
-})
-
-export type WordSet = z.infer<typeof WordSetSchema>
-
-const SentenceEvaluationSchema = z.object({
-  isValid: z.boolean(),
-  feedback: z.string(),
-  alternativeSentences: z.array(z.string()).optional(),
-})
-
-export type SentenceEvaluation = z.infer<typeof SentenceEvaluationSchema>
+export interface SentenceEvaluation {
+  isValid: boolean;
+  feedback: string;
+  alternativeSentences?: string[];
+}
 
 /**
  * Generates a random vocabulary word with all its details
@@ -57,7 +49,7 @@ export async function generateRandomWord(
     }
     
     const data = await response.json()
-    return WordDetailsSchema.parse(data)
+    return data as WordDetails
   } catch (error) {
     console.error("Error generating word:", error)
     // Return a fallback word if generation fails
@@ -109,7 +101,7 @@ export async function generateWordSet(
     }
     
     const data = await response.json()
-    return WordSetSchema.parse(data)
+    return data as WordSet
   } catch (error) {
     console.error("Error generating word set:", error)
     // Return a fallback word set if generation fails
@@ -150,7 +142,7 @@ export async function evaluateSentence(
     }
     
     const data = await response.json()
-    return SentenceEvaluationSchema.parse(data)
+    return data as SentenceEvaluation
   } catch (error) {
     console.error("Error evaluating sentence:", error)
     // Return a fallback evaluation if generation fails

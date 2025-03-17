@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { ArrowLeft, ArrowRight, Repeat, Volume2, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -24,6 +24,7 @@ export default function FlashcardsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [selectedDifficulty, setSelectedDifficulty] = useState<"easy" | "medium" | "hard" | null>(null)
   const { toast } = useToast()
+  const isInitialized = useRef(false)
 
   // Load initial flashcards
   useEffect(() => {
@@ -60,7 +61,10 @@ export default function FlashcardsPage() {
       }
     }
     
-    loadFlashcards()
+    if (!isInitialized.current) {
+      isInitialized.current = true
+      loadFlashcards()
+    }
   }, [selectedDifficulty, toast])
 
   useEffect(() => {

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Check, X, HelpCircle, ArrowRight, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -31,6 +31,7 @@ export default function SentenceUsagePage() {
   const [isLoading, setIsLoading] = useState(true)
   const [selectedDifficulty, setSelectedDifficulty] = useState<"easy" | "medium" | "hard" | null>(null)
   const { toast } = useToast()
+  const isInitialized = useRef(false)
 
   // Load initial practice words
   useEffect(() => {
@@ -60,8 +61,11 @@ export default function SentenceUsagePage() {
         setIsLoading(false)
       }
     }
-    
-    loadPracticeWords()
+
+    if (!isInitialized.current) {
+      isInitialized.current = true
+      loadPracticeWords()
+    }
   }, [selectedDifficulty, toast])
 
   useEffect(() => {
