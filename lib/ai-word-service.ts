@@ -154,8 +154,7 @@ export async function evaluateSentence(
 }
 
 /**
- * Saves a word to the user's learned words collection
- * In a real implementation, this would interact with your database
+ * Saves a word to the user's learned words collection in Supabase
  */
 export async function saveLearnedWord(
   wordDetails: WordDetails,

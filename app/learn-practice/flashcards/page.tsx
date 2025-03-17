@@ -126,7 +126,7 @@ export default function FlashcardsPage() {
     }
     setFlashcards(updatedFlashcards)
 
-    // Save to user's learned words
+    // Save to user's learned words in Supabase
     try {
       await saveLearnedWord(currentWord, {
         mastery: difficulty === "easy" ? 90 : difficulty === "medium" ? 60 : 30,
@@ -290,97 +290,99 @@ export default function FlashcardsPage() {
         </div>
       </div>
 
-      <Card
-        className={`w-full h-96 perspective-1000 transition-transform duration-500 ${isFlipped ? "rotate-y-180" : ""}`}
-      >
-        <div className="relative w-full h-full transform-style-3d">
+      <Card className="w-full h-96 overflow-hidden">
+        <div className="relative w-full h-full [perspective:1000px]">
           <div
-            className={`absolute w-full h-full backface-hidden ${isFlipped ? "rotate-y-180 pointer-events-none opacity-0" : ""}`}
+            className={`absolute w-full h-full transition-all duration-500 [transform-style:preserve-3d] ${
+              isFlipped ? "[transform:rotateY(180deg)]" : ""
+            }`}
           >
-            <CardHeader className="text-center">
-              <Badge variant="outline" className="self-start">
-                {currentFlashcard.difficulty}
-              </Badge>
-              <CardTitle className="text-4xl mt-4">{currentFlashcard.word}</CardTitle>
-            </CardHeader>
-            <CardContent className="flex justify-center items-center h-48">
-              <Button variant="ghost" size="lg" onClick={handleFlip}>
-                Click to reveal definition and mnemonic
-              </Button>
-            </CardContent>
-            <CardFooter className="flex justify-end">
-              <Button variant="outline" size="icon" onClick={handleSpeak}>
-                <Volume2 className="h-4 w-4" />
-              </Button>
-            </CardFooter>
-          </div>
+            {/* Front of card */}
+            <div className="absolute w-full h-full [backface-visibility:hidden] flex flex-col">
+              <CardHeader className="text-center flex-shrink-0">
+                <Badge variant="outline" className="self-start">
+                  {currentFlashcard.difficulty}
+                </Badge>
+                <CardTitle className="text-4xl mt-4">{currentFlashcard.word}</CardTitle>
+              </CardHeader>
+              <CardContent className="flex justify-center items-center flex-grow">
+                <Button variant="ghost" size="lg" onClick={handleFlip}>
+                  Click to reveal definition and mnemonic
+                </Button>
+              </CardContent>
+              <CardFooter className="flex justify-end flex-shrink-0">
+                <Button variant="outline" size="icon" onClick={handleSpeak}>
+                  <Volume2 className="h-4 w-4" />
+                </Button>
+              </CardFooter>
+            </div>
 
-          <div
-            className={`absolute w-full h-full backface-hidden ${isFlipped ? "" : "rotate-y-180 pointer-events-none opacity-0"}`}
-          >
-            <CardHeader>
-              <CardTitle className="text-2xl">Definition</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <p>{currentFlashcard.definition}</p>
+            {/* Back of card */}
+            <div className="absolute w-full h-full [backface-visibility:hidden] [transform:rotateY(180deg)] flex flex-col">
+              <CardHeader className="flex-shrink-0">
+                <CardTitle className="text-2xl">Definition</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 flex-grow overflow-hidden text-sm">
+                <p className="line-clamp-2">{currentFlashcard.definition}</p>
 
-              <div>
-                <h3 className="text-lg font-medium mb-2">Mnemonic</h3>
-                <div className="bg-muted p-4 rounded-md">
-                  <p className="italic">{currentFlashcard.mnemonic}</p>
+                <div>
+                  <h3 className="text-base font-medium mb-1">Mnemonic</h3>
+                  <div className="bg-muted p-3 rounded-md">
+                    <p className="italic text-xs line-clamp-3">{currentFlashcard.mnemonic}</p>
+                  </div>
+                  <div className="mt-1 flex justify-end">
+                    <Button variant="ghost" size="sm" onClick={handleNewMnemonic} disabled={isGeneratingMnemonic} className="h-7 text-xs">
+                      <Repeat className="h-3 w-3 mr-1" />
+                      {isGeneratingMnemonic ? "Generating..." : "New mnemonic"}
+                    </Button>
+                  </div>
                 </div>
-                <div className="mt-2 flex justify-end">
-                  <Button variant="ghost" size="sm" onClick={handleNewMnemonic} disabled={isGeneratingMnemonic}>
-                    <Repeat className="h-3 w-3 mr-1" />
-                    {isGeneratingMnemonic ? "Generating..." : "New mnemonic"}
+                
+                {currentFlashcard.examples && currentFlashcard.examples.length > 0 && (
+                  <div>
+                    <h3 className="text-base font-medium mb-1">Examples</h3>
+                    <ul className="space-y-1">
+                      {currentFlashcard.examples.slice(0, 1).map((example, index) => (
+                        <li key={index} className="text-xs bg-muted p-2 rounded line-clamp-2">
+                          {example}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </CardContent>
+              <CardFooter className="flex justify-between flex-shrink-0">
+                <div className="flex gap-1">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-green-500 text-green-600 hover:bg-green-50 h-7 text-xs"
+                    onClick={() => handleMarkDifficulty("easy")}
+                  >
+                    Easy
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-yellow-500 text-yellow-600 hover:bg-yellow-50 h-7 text-xs"
+                    onClick={() => handleMarkDifficulty("medium")}
+                  >
+                    Medium
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-red-500 text-red-600 hover:bg-red-50 h-7 text-xs"
+                    onClick={() => handleMarkDifficulty("hard")}
+                  >
+                    Hard
                   </Button>
                 </div>
-              </div>
-              
-              {currentFlashcard.examples && currentFlashcard.examples.length > 0 && (
-                <div>
-                  <h3 className="text-lg font-medium mb-2">Examples</h3>
-                  <ul className="space-y-2">
-                    {currentFlashcard.examples.map((example, index) => (
-                      <li key={index} className="text-sm bg-muted p-2 rounded">
-                        {example}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </CardContent>
-            <CardFooter className="flex justify-between">
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="border-green-500 text-green-600 hover:bg-green-50"
-                  onClick={() => handleMarkDifficulty("easy")}
-                >
-                  Easy
+                <Button variant="ghost" size="sm" onClick={handleFlip} className="h-7 text-xs">
+                  Back to word
                 </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="border-yellow-500 text-yellow-600 hover:bg-yellow-50"
-                  onClick={() => handleMarkDifficulty("medium")}
-                >
-                  Medium
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="border-red-500 text-red-600 hover:bg-red-50"
-                  onClick={() => handleMarkDifficulty("hard")}
-                >
-                  Hard
-                </Button>
-              </div>
-              <Button variant="ghost" onClick={handleFlip}>
-                Back to word
-              </Button>
-            </CardFooter>
+              </CardFooter>
+            </div>
           </div>
         </div>
       </Card>

@@ -97,7 +97,7 @@ export default function SentenceUsagePage() {
       setScore(score + pointsEarned)
       setStreak(streak + 1)
 
-      // Save to user's learned words
+      // Save to user's learned words in Supabase
       try {
         await saveLearnedWord(practiceWords[currentIndex], {
           mastery: Math.min(100, 60 + (pointsEarned * 10)),
