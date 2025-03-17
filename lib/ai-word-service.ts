@@ -120,10 +120,12 @@ export async function generateWordSet(
 
 /**
  * Evaluates a user's sentence that should include specific words
+ * and saves the words to the learned_words table if the sentence is valid
  */
 export async function evaluateSentence(
   sentence: string,
-  requiredWords: string[]
+  requiredWords: string[],
+  difficulty: "easy" | "medium" | "hard" = "medium"
 ): Promise<SentenceEvaluation> {
   try {
     const response = await fetch('/api/vocabulary/evaluate-sentence', {
@@ -141,8 +143,39 @@ export async function evaluateSentence(
       throw new Error(`API error: ${response.status}`)
     }
     
-    const data = await response.json()
-    return data as SentenceEvaluation
+    const data = await response.json() as SentenceEvaluation
+    
+    // If the sentence is valid, save each word to the learned_words table
+    if (data.isValid) {
+      try {
+        // For each word in the required words, save it as a learned word
+        for (const word of requiredWords) {
+           saveLearnedWord(
+            {
+              word: word,
+              definition: `Used in sentence: "${sentence}"`,
+              mnemonic: "",
+              difficulty: difficulty, // Use the provided difficulty
+              hints: [],
+              examples: [sentence],
+              synonyms: [],
+              antonyms: []
+            },
+            {
+              // Adjust mastery based on difficulty
+              mastery: difficulty === "easy" ? 80 : difficulty === "medium" ? 70 : 60,
+              lastPracticed: new Date(),
+              notes: `Used in word association exercise: "${sentence}"`
+            }
+          )
+        }
+      } catch (error) {
+        console.error("Error saving words from sentence:", error)
+        // Continue even if saving fails - don't affect the user experience
+      }
+    }
+    
+    return data
   } catch (error) {
     console.error("Error evaluating sentence:", error)
     // Return a fallback evaluation if generation fails

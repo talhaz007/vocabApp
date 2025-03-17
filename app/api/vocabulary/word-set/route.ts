@@ -9,10 +9,10 @@ const openai = new OpenAI({
 
 // Define Zod schema for validation
 const WordSetSchema = z.object({
-  words: z.array(z.string()).min(2).max(6),
+  words: z.array(z.string()),
   category: z.string(),
   difficulty: z.enum(["easy", "medium", "hard"]),
-  possibleSentences: z.array(z.string()).min(1),
+  possibleSentences: z.array(z.string()),
 });
 
 export async function POST(request: NextRequest) {
@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     const { difficulty, category } = body;
     
     const prompt = `
-      Generate a set of 4-6 related words ${difficulty ? `with ${difficulty} difficulty` : ""} 
+      Generate a set of 3 related words ${difficulty ? `with ${difficulty} difficulty` : ""} 
       ${category ? `from the category "${category}"` : ""}.
     `;
 

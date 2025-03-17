@@ -137,12 +137,21 @@ export default function WordAssociationPage() {
     }
 
     try {
-      const result = await evaluateSentence(userSentence, selectedWords)
+      const result = await evaluateSentence(
+        userSentence, 
+        selectedWords, 
+        currentWordSet.difficulty
+      )
       
       if (result.isValid) {
         setFeedbackType("success")
         setFeedback(result.feedback)
         setAlternativeSentences(result.alternativeSentences || [])
+        
+        toast({
+          title: "Great job!",
+          description: "Your sentence is valid and your progress has been saved.",
+        })
       } else {
         setFeedbackType("error")
         setFeedback(result.feedback)
