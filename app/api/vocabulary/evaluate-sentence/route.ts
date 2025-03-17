@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     `;
 
     const completion = await openai.beta.chat.completions.parse({
-      model: "gpt-4o",
+      model: "gpt-4o-mini",
       response_format: zodResponseFormat(SentenceEvaluationSchema, "evaluation"),
       messages: [
         { 
