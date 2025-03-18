@@ -2,8 +2,8 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
-import { Volume2, Play, Pause, SkipForward, SkipBack, Check, X } from "lucide-react"
+import { useState, useEffect, useRef } from "react"
+import { Volume2, Play, Pause, SkipForward, SkipBack, Check, X, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
@@ -12,6 +12,8 @@ import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
 import { Breadcrumb } from "@/components/breadcrumb"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { generateRandomWord, saveLearnedWord, type WordDetails } from "@/lib/ai-word-service"
+import { useRouter } from "next/navigation"
 
 interface AudioWord {
   id: string
@@ -22,8 +24,8 @@ interface AudioWord {
   difficulty: "easy" | "medium" | "hard"
 }
 
-// Sample audio words
-const audioWords: AudioWord[] = [
+// Sample audio words for fallback
+const sampleAudioWords: AudioWord[] = [
   {
     id: "1",
     word: "Eloquent",
@@ -32,41 +34,11 @@ const audioWords: AudioWord[] = [
     audioAccents: ["American", "British", "Australian"],
     difficulty: "medium",
   },
-  {
-    id: "2",
-    word: "Ephemeral",
-    definition: "Lasting for a very short time",
-    example: "The ephemeral beauty of cherry blossoms lasts only a few days.",
-    audioAccents: ["American", "British", "Australian"],
-    difficulty: "hard",
-  },
-  {
-    id: "3",
-    word: "Perseverance",
-    definition: "Persistence in doing something despite difficulty",
-    example: "Her perseverance in the face of obstacles led to her ultimate success.",
-    audioAccents: ["American", "British", "Australian"],
-    difficulty: "medium",
-  },
-  {
-    id: "4",
-    word: "Ubiquitous",
-    definition: "Present, appearing, or found everywhere",
-    example: "Smartphones have become ubiquitous in modern society.",
-    audioAccents: ["American", "British", "Australian"],
-    difficulty: "hard",
-  },
-  {
-    id: "5",
-    word: "Serendipity",
-    definition: "The occurrence of events by chance in a happy or beneficial way",
-    example: "Finding his dream job while on vacation was pure serendipity.",
-    audioAccents: ["American", "British", "Australian"],
-    difficulty: "medium",
-  },
+  // ... other sample words
 ]
 
 export default function AudioLearningPage() {
+  const router = useRouter()
   const [currentIndex, setCurrentIndex] = useState(0)
   const [selectedAccent, setSelectedAccent] = useState<string>("American")
   const [isPlaying, setIsPlaying] = useState(false)
@@ -75,18 +47,85 @@ export default function AudioLearningPage() {
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null)
   const [progress, setProgress] = useState(0)
   const [playbackRate, setPlaybackRate] = useState(1)
+  const [isLoading, setIsLoading] = useState(true)
+  const [selectedDifficulty, setSelectedDifficulty] = useState<"easy" | "medium" | "hard" | null>(null)
+  const [audioWords, setAudioWords] = useState<AudioWord[]>([])
+  const isInitialized = useRef(false)
   const { toast } = useToast()
+
+  // Load initial audio words
+  useEffect(() => {
+    async function loadAudioWords() {
+      setIsLoading(true)
+      try {
+        const newWords: AudioWord[] = []
+        
+        // Generate 5 words sequentially
+        for (let i = 0; i < 5; i++) {
+          const word = await generateRandomWord({ difficulty: selectedDifficulty || undefined })
+          
+          // Get the first example or create a simple one if none exists
+          const example = word.examples && word.examples.length > 0 
+            ? word.examples[0] 
+            : `The word "${word.word}" is often used in academic contexts.`
+          
+          const audioWord: AudioWord = {
+            id: `word-${i}`,
+            word: word.word,
+            definition: word.definition,
+            example: example,
+            audioAccents: ["American", "British", "Australian"], // Standard options
+            difficulty: word.difficulty as "easy" | "medium" | "hard"
+          }
+          newWords.push(audioWord)
+          
+          // Show the first word immediately and stop loading indicator
+          if (i === 0) {
+            setAudioWords([audioWord])
+            setIsLoading(false)
+          } else {
+            // Update with all words generated so far
+            setAudioWords([...newWords])
+          }
+        }
+        
+        toast({
+          title: "Audio words loaded",
+          description: "Your audio learning exercises are ready",
+        })
+      } catch (error) {
+        console.error("Error loading audio words:", error)
+        toast({
+          title: "Error loading words",
+          description: "Please try again later",
+          variant: "destructive",
+        })
+        setIsLoading(false)
+        // Fall back to sample words if loading fails
+        setAudioWords(sampleAudioWords)
+      }
+    }
+
+    if (!isInitialized.current) {
+      isInitialized.current = true
+      loadAudioWords()
+    }
+  }, [selectedDifficulty, toast])
 
   useEffect(() => {
     // Update progress when current index changes
-    setProgress(((currentIndex + 1) / audioWords.length) * 100)
-  }, [currentIndex])
+    if (audioWords.length > 0) {
+      setProgress(((currentIndex + 1) / audioWords.length) * 100)
+    }
+  }, [currentIndex, audioWords.length])
 
   const speakWord = () => {
+    if (audioWords.length === 0) return
+    
     setIsPlaying(true)
     const utterance = new SpeechSynthesisUtterance(audioWords[currentIndex].word)
 
-    // Set voice based on accent (this is a simplification)
+    // Set voice based on accent
     const voices = window.speechSynthesis.getVoices()
     if (selectedAccent === "British") {
       const britishVoice = voices.find((voice) => voice.lang.includes("en-GB"))
@@ -102,10 +141,12 @@ export default function AudioLearningPage() {
   }
 
   const speakExample = () => {
+    if (audioWords.length === 0) return
+    
     setIsPlaying(true)
     const utterance = new SpeechSynthesisUtterance(audioWords[currentIndex].example)
 
-    // Set voice based on accent (this is a simplification)
+    // Set voice based on accent
     const voices = window.speechSynthesis.getVoices()
     if (selectedAccent === "British") {
       const britishVoice = voices.find((voice) => voice.lang.includes("en-GB"))
@@ -133,8 +174,9 @@ export default function AudioLearningPage() {
     setSelectedAccent(value)
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (audioWords.length === 0) return
 
     const currentWord = audioWords[currentIndex].word.toLowerCase()
     const userWord = userAnswer.toLowerCase().trim()
@@ -145,6 +187,29 @@ export default function AudioLearningPage() {
         title: "Correct!",
         description: "You identified the word correctly!",
       })
+      
+      // Save the word as learned
+      try {
+        await saveLearnedWord(
+          {
+            word: audioWords[currentIndex].word,
+            definition: audioWords[currentIndex].definition,
+            mnemonic: "",
+            difficulty: audioWords[currentIndex].difficulty,
+            hints: [],
+            examples: [audioWords[currentIndex].example],
+            synonyms: [],
+            antonyms: []
+          },
+          {
+            mastery: 80, // High mastery since they correctly identified it
+            lastPracticed: new Date(),
+            notes: "Correctly identified in audio learning exercise"
+          }
+        )
+      } catch (error) {
+        console.error("Error saving audio learning progress:", error)
+      }
     } else {
       setIsCorrect(false)
       toast({
@@ -165,8 +230,6 @@ export default function AudioLearningPage() {
         title: "Exercise complete!",
         description: "You've completed all audio learning exercises.",
       })
-      // Reset for a new session
-      setCurrentIndex(0)
     }
   }
 
@@ -176,6 +239,35 @@ export default function AudioLearningPage() {
       setUserAnswer("")
       setIsCorrect(null)
     }
+  }
+
+  const handleChangeDifficulty = (difficulty: "easy" | "medium" | "hard" | null) => {
+    setSelectedDifficulty(difficulty)
+    setCurrentIndex(0)
+    setUserAnswer("")
+    setIsCorrect(null)
+    isInitialized.current = false
+  }
+
+  const handleFinish = () => {
+    router.push("/speaking-listening")
+  }
+
+  if (isLoading) {
+    return (
+      <div className="container max-w-4xl py-8 space-y-6">
+        <Breadcrumb
+          items={[
+            { label: "Speaking & Listening", href: "/speaking-listening", active: false },
+            { label: "Audio Learning", href: "/speaking-listening/audio-learning", active: true },
+          ]}
+        />
+        <div className="flex flex-col items-center justify-center h-96">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+          <p className="text-lg text-muted-foreground">Generating audio learning exercises...</p>
+        </div>
+      </div>
+    )
   }
 
   const currentWord = audioWords[currentIndex]
@@ -191,11 +283,45 @@ export default function AudioLearningPage() {
 
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Audio Learning</h1>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-4">
           <span className="text-sm text-muted-foreground">
-            {currentIndex + 1} of {audioWords.length}
+            {currentIndex + 1} of 5
           </span>
-          <Progress value={progress} className="w-32" />
+          {/* <Progress value={progress} className="w-32" /> */}
+          
+          {/* Add difficulty selector */}
+          <div className="flex gap-2">
+            <Button 
+              size="sm" 
+              variant={selectedDifficulty === "easy" ? "default" : "outline"}
+              onClick={() => handleChangeDifficulty("easy")}
+            >
+              Easy
+            </Button>
+            <Button 
+              size="sm" 
+              variant={selectedDifficulty === "medium" ? "default" : "outline"}
+              onClick={() => handleChangeDifficulty("medium")}
+            >
+              Medium
+            </Button>
+            <Button 
+              size="sm" 
+              variant={selectedDifficulty === "hard" ? "default" : "outline"}
+              onClick={() => handleChangeDifficulty("hard")}
+            >
+              Hard
+            </Button>
+            {selectedDifficulty && (
+              <Button 
+                size="sm" 
+                variant="ghost"
+                onClick={() => handleChangeDifficulty(null)}
+              >
+                Clear
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -345,11 +471,17 @@ export default function AudioLearningPage() {
             Previous
           </Button>
 
-          {(mode === "learn" || isCorrect === true) && (
-            <Button onClick={handleNext}>
-              Next
-              <SkipForward className="ml-2 h-4 w-4" />
+          {currentIndex === 4 ? (
+            <Button onClick={handleFinish}>
+              Finish <Check className="ml-2 h-4 w-4" />
             </Button>
+          ) : (
+            (
+              <Button onClick={handleNext} disabled={currentIndex === audioWords.length - 1}>
+                Next
+                <SkipForward className="ml-2 h-4 w-4" />
+              </Button>
+            )
           )}
         </CardFooter>
       </Card>
