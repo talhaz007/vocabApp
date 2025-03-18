@@ -314,45 +314,27 @@ export default function SentenceUsagePage() {
       };
       
       // Add to saved answers array
-      setSavedAnswers(prev => [...prev, newSavedAnswer]);
-    }
-  
-    // Show loading state
-    setIsLoading(true);
-  
-    // Make an API request to send savedAnswers
-    fetch('/api/feedback', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ savedAnswers })
-    })
-    .then(response => {
-      if (!response.ok) {
-        throw new Error('Failed to send feedback');
-      }
-      return response.json();
-    })
-    .then(data => {
-      console.log('Feedback received:', data);
+      const finalAnswers = [...savedAnswers, newSavedAnswer];
       
-      // Store the feedback data in localStorage to access it on the feedback page
-      localStorage.setItem('vocabularyFeedback', JSON.stringify(data));
+      // Store the answers in localStorage for the feedback page to process
+      localStorage.setItem('savedVocabularyAnswers', JSON.stringify(finalAnswers));
       
-      // Navigate to the feedback page - without trying to pass data in the URL
+      // Navigate directly to the feedback page without waiting for API call
       router.push('/learn-practice/feedback');
-    })
-    .catch(error => {
-      console.error("Error sending feedback:", error);
-      setIsLoading(false);
-      
-      toast({
-        title: "Error generating feedback",
-        description: "Please try again later",
-        variant: "destructive",
-      });
-    });
+    } else {
+      // If there's no current word/input but we have previous answers
+      if (savedAnswers.length > 0) {
+        localStorage.setItem('savedVocabularyAnswers', JSON.stringify(savedAnswers));
+        router.push('/learn-practice/feedback');
+      } else {
+        // No answers to process
+        toast({
+          title: "No answers to evaluate",
+          description: "Please complete at least one question before finishing",
+          variant: "destructive",
+        });
+      }
+    }
   }
 
   const showNextHint = () => {

@@ -2,22 +2,26 @@
 
 import React, { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Check, X, ArrowLeft, Award, BookOpen } from "lucide-react"
+import { Check, X, ArrowLeft, Award, BookOpen, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Breadcrumb } from "@/components/breadcrumb"
+import { useToast } from "@/hooks/use-toast"
 
 const VocabularyFeedback = () => {
   const router = useRouter()
   const [feedbackData, setFeedbackData] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [processing, setProcessing] = useState(false)
+  const { toast } = useToast()
   
   useEffect(() => {
-    // Get feedback data from localStorage
+    // Get feedback data or savedAnswers from localStorage
     const storedFeedback = localStorage.getItem('vocabularyFeedback')
+    const savedAnswers = localStorage.getItem('savedVocabularyAnswers')
     
     if (storedFeedback) {
       try {
@@ -25,15 +29,57 @@ const VocabularyFeedback = () => {
         setFeedbackData(parsedData)
         // Clear the localStorage after retrieving the data to avoid stale data on refreshes
         localStorage.removeItem('vocabularyFeedback')
+        setLoading(false)
       } catch (error) {
         console.error("Error parsing feedback data:", error)
+        setLoading(false)
       }
+    } else if (savedAnswers) {
+      // If we have saved answers but no feedback yet, process them
+      try {
+        setProcessing(true)
+        const parsedAnswers = JSON.parse(savedAnswers)
+        
+        // Call the API to process the answers
+        fetch('/api/feedback', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ savedAnswers: parsedAnswers })
+        })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Failed to process feedback')
+          }
+          return response.json()
+        })
+        .then(data => {
+          setFeedbackData(data)
+          localStorage.removeItem('savedVocabularyAnswers') // Clear saved answers
+          setProcessing(false)
+          setLoading(false)
+        })
+        .catch(error => {
+          console.error("Error processing feedback:", error)
+          toast({
+            title: "Error generating feedback",
+            description: "Please try again later",
+            variant: "destructive",
+          })
+          setProcessing(false)
+          setLoading(false)
+        })
+      } catch (error) {
+        console.error("Error parsing saved answers:", error)
+        setLoading(false)
+      }
+    } else {
+      setLoading(false)
     }
-    
-    setLoading(false)
-  }, [])
+  }, [toast])
 
-  if (loading) {
+  if (loading || processing) {
     return (
       <div className="container max-w-4xl py-8 space-y-6">
         <Breadcrumb
@@ -44,8 +90,16 @@ const VocabularyFeedback = () => {
         />
         <Card>
           <CardHeader>
-            <CardTitle>Loading feedback...</CardTitle>
+            <CardTitle>
+              {processing ? "Generating feedback..." : "Loading feedback..."}
+            </CardTitle>
+            <CardDescription>
+              {processing ? "Please wait while we generate your feedback" : "Please wait while we load your feedback"}
+            </CardDescription>
           </CardHeader>
+          <CardContent className="flex justify-center py-12">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          </CardContent>
         </Card>
       </div>
     )
@@ -123,11 +177,11 @@ const VocabularyFeedback = () => {
                 See how well you used the vocabulary words in sentences
               </CardDescription>
             </div>
-            <div className="flex flex-col items-center">
+            {/* <div className="flex flex-col items-center">
               <Award className="h-10 w-10 text-amber-500 mb-1" />
               <span className="text-2xl font-bold">{vocabularyMastery}</span>
               <span className="text-xs text-muted-foreground">Mastery Score</span>
-            </div>
+            </div> */}
           </div>
         </CardHeader>
 
@@ -136,7 +190,7 @@ const VocabularyFeedback = () => {
           <div className="space-y-2 pt-2">
             <div className="flex justify-between items-center">
               <h3 className="font-medium">Vocabulary Mastery</h3>
-              <span className="text-sm">{vocabularyMastery}%</span>
+              {/* <span className="text-sm">{vocabularyMastery}%</span> */}
             </div>
             <Progress 
               value={vocabularyMastery} 
