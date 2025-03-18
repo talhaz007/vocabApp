@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { Volume2, Repeat, Check, X, ArrowRight, HelpCircle, Loader2 } from "lucide-react"
+import { Volume2, Repeat, Check, X, ArrowRight, HelpCircle, Loader2, ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
@@ -35,6 +35,16 @@ export default function SoundMnemonicsPage() {
   const [selectedDifficulty, setSelectedDifficulty] = useState<"easy" | "medium" | "hard" | null>(null)
   const { toast } = useToast()
   const isInitialized = useRef(false)
+
+  // Add state to track word progress across navigation
+  const [wordProgress, setWordProgress] = useState(() => 
+    Array(5).fill({
+      userAnswer: "",
+      isCorrect: null,
+      showHint: false,
+      mode: "learn"
+    })
+  )
 
   useEffect(() => {
     async function loadSoundMnemonics() {
@@ -128,12 +138,36 @@ export default function SoundMnemonicsPage() {
 
     if (userMnemonic === currentMnemonic) {
       setIsCorrect(true)
+      
+      // Update word progress
+      const updatedProgress = [...wordProgress]
+      updatedProgress[currentIndex] = {
+        ...updatedProgress[currentIndex],
+        userAnswer,
+        isCorrect: true,
+        showHint,
+        mode
+      }
+      setWordProgress(updatedProgress)
+      
       toast({
         title: "Correct!",
         description: "You remembered the sound mnemonic!",
       })
     } else {
       setIsCorrect(false)
+      
+      // Update word progress
+      const updatedProgress = [...wordProgress]
+      updatedProgress[currentIndex] = {
+        ...updatedProgress[currentIndex],
+        userAnswer,
+        isCorrect: false,
+        showHint,
+        mode
+      }
+      setWordProgress(updatedProgress)
+      
       toast({
         title: "Not quite right",
         description: "Try again or use a hint.",
@@ -144,15 +178,42 @@ export default function SoundMnemonicsPage() {
 
   const handleNext = () => {
     if (currentIndex < 4) {
-      setCurrentIndex(currentIndex + 1)
-      setUserAnswer("")
-      setIsCorrect(null)
-      setShowHint(false)
+      // Save current state to word progress
+      const updatedProgress = [...wordProgress]
+      updatedProgress[currentIndex] = {
+        userAnswer,
+        isCorrect,
+        showHint,
+        mode
+      }
+      setWordProgress(updatedProgress)
+
+      // Load next word's state
+      const nextIndex = currentIndex + 1
+      setCurrentIndex(nextIndex)
+      const nextProgress = updatedProgress[nextIndex]
+      setUserAnswer(nextProgress.userAnswer)
+      setIsCorrect(nextProgress.isCorrect)
+      setShowHint(nextProgress.showHint)
+      setMode(nextProgress.mode)
     } else {
       // Switch modes or complete exercise
       if (mode === "learn") {
         setMode("practice")
         setCurrentIndex(0)
+        
+        // Update all word progress to practice mode
+        const updatedProgress = wordProgress.map(wp => ({
+          ...wp,
+          mode: "practice"
+        }))
+        setWordProgress(updatedProgress)
+        
+        // Load first word's state in practice mode
+        setUserAnswer(updatedProgress[0].userAnswer)
+        setIsCorrect(updatedProgress[0].isCorrect)
+        setShowHint(updatedProgress[0].showHint)
+        
         toast({
           title: "Learning complete!",
           description: "Now let's practice recalling the mnemonics.",
@@ -169,12 +230,42 @@ export default function SoundMnemonicsPage() {
     }
   }
 
+  const handlePrevious = () => {
+    if (currentIndex > 0) {
+      // Save current state to word progress
+      const updatedProgress = [...wordProgress]
+      updatedProgress[currentIndex] = {
+        userAnswer,
+        isCorrect,
+        showHint,
+        mode
+      }
+      setWordProgress(updatedProgress)
+
+      // Load previous word's state
+      const prevIndex = currentIndex - 1
+      setCurrentIndex(prevIndex)
+      const prevProgress = updatedProgress[prevIndex]
+      setUserAnswer(prevProgress.userAnswer)
+      setIsCorrect(prevProgress.isCorrect)
+      setShowHint(prevProgress.showHint)
+      setMode(prevProgress.mode)
+    }
+  }
+
   const handleChangeDifficulty = (difficulty: "easy" | "medium" | "hard" | null) => {
     setSelectedDifficulty(difficulty)
     setCurrentIndex(0)
     setUserAnswer("")
     setIsCorrect(null)
     setShowHint(false)
+    // Reset word progress
+    setWordProgress(Array(5).fill({
+      userAnswer: "",
+      isCorrect: null,
+      showHint: false,
+      mode: "learn"
+    }))
     // Reset initialization flag to trigger mnemonics reload
     isInitialized.current = false
   }
@@ -407,29 +498,40 @@ export default function SoundMnemonicsPage() {
           )}
         </CardContent>
         <CardFooter>
-          {mode === "learn" || isCorrect === true ? (
-            <Button onClick={handleNext} disabled={currentIndex === soundMnemonics.length - 1 && currentIndex < 4} className="w-full">
-              {currentIndex < 4 ? "Next Word" : mode === "learn" ? "Start Practice" : "Finish"}
-              <ArrowRight className="ml-2 h-4 w-4" />
+          <div className="flex justify-between w-full">
+            <Button 
+              variant="outline" 
+              onClick={handlePrevious} 
+              disabled={currentIndex === 0}
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" /> Previous
             </Button>
-          ) : (
-            <div className="flex justify-between w-full">
-              <Button variant="outline" onClick={() => setMode("learn")}>
-                <Repeat className="mr-2 h-4 w-4" />
-                Review This Word
-              </Button>
+            
+            {mode === "learn" || isCorrect === true ? (
+              <Button onClick={handleNext} disabled={currentIndex === soundMnemonics.length - 1 && 
+                currentIndex < 4} >
+                  {currentIndex < 4 ? "Next Word" : mode === "learn" ? "Start Practice" : "Finish"}
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+            ) : (
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setMode("learn")}>
+                  <Repeat className="mr-2 h-4 w-4" />
+                  Review This Word
+                </Button>
 
-              {currentIndex === 4 ?
-                <Button onClick={handleFinish}>
-                  Finish
-                </Button>
-              :
-                <Button onClick={handleNext}>
-                  Next
-                </Button>
-              }
-            </div>
-          )}
+                {currentIndex === 4 ?
+                  <Button onClick={handleFinish}>
+                    Finish
+                  </Button>
+                :
+                  <Button onClick={handleNext} disabled={currentIndex === soundMnemonics.length - 1}>
+                    Next
+                  </Button>
+                }
+              </div>
+            )}
+          </div>
         </CardFooter>
       </Card>
     </div>
