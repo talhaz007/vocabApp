@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     
     const prompt = `
       Generate a set of 5 related vocabulary words ${difficulty ? `with ${difficulty} difficulty` : ""} 
-      ${category ? `from the category "${category}"` : ""}.
+      ${category ? `from the category "${category}"` : ""} for students in grades 1-7. Words should not be synonyms.
       Include the category name, and 3 example sentences using these words.
       ${includeQuestion ? "Also generate a thought-provoking question that would require using these words in the response." : ""}
     `;
