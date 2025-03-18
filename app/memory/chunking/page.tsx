@@ -1,13 +1,17 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Clock, Check, X, ArrowRight, RefreshCw } from "lucide-react"
+import { Check, X, ArrowRight, RefreshCw, PlusCircle, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { useToast } from "@/hooks/use-toast"
 import { Breadcrumb } from "@/components/breadcrumb"
 import { Badge } from "@/components/ui/badge"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface WordCluster {
   id: string
@@ -17,148 +21,168 @@ interface WordCluster {
   category: "thematic" | "synonym" | "antonym" | "contextual"
 }
 
-// Sample word clusters
-const wordClusters: WordCluster[] = [
-  {
-    id: "travel",
-    name: "Travel Vocabulary",
-    description: "Words related to travel and tourism",
-    words: ["Itinerary", "Destination", "Transit", "Accommodation", "Excursion", "Passport", "Luggage"],
-    category: "thematic",
-  },
-  {
-    id: "eloquent",
-    name: "Eloquent Speech",
-    description: "Words related to articulate expression",
-    words: ["Eloquent", "Articulate", "Fluent", "Expressive", "Persuasive", "Rhetorical", "Verbose"],
-    category: "synonym",
-  },
-  {
-    id: "emotions",
-    name: "Positive vs Negative Emotions",
-    description: "Words expressing contrasting emotions",
-    words: ["Ecstatic", "Despondent", "Jubilant", "Melancholic", "Elated", "Dejected", "Euphoric"],
-    category: "antonym",
-  },
-  {
-    id: "negotiation",
-    name: "Negotiation Terms",
-    description: "Words used in negotiation contexts",
-    words: ["Bargain", "Compromise", "Agreement", "Dispute", "Concession", "Terms", "Proposal"],
-    category: "contextual",
-  },
-  {
-    id: "academic",
-    name: "Academic Writing",
-    description: "Words commonly used in academic contexts",
-    words: ["Analyze", "Evaluate", "Synthesize", "Critique", "Methodology", "Framework", "Paradigm"],
-    category: "contextual",
-  },
-]
-
 export default function ChunkingPage() {
+  const [wordClusters, setWordClusters] = useState<WordCluster[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const [currentClusterIndex, setCurrentClusterIndex] = useState(0)
-  const [mode, setMode] = useState<"learn" | "sort" | "speed">("learn")
+  const [mode, setMode] = useState<"learn" | "sort">("learn")
   const [userSortedWords, setUserSortedWords] = useState<string[]>([])
   const [availableWords, setAvailableWords] = useState<string[]>([])
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null)
   const [progress, setProgress] = useState(0)
-  const [speedWord, setSpeedWord] = useState<string | null>(null)
-  const [speedTimer, setSpeedTimer] = useState<number | null>(null)
-  const [speedScore, setSpeedScore] = useState(0)
-  const [speedTotal, setSpeedTotal] = useState(0)
+  
+  // Custom cluster dialog states
+  const [customDialogOpen, setCustomDialogOpen] = useState(false)
+  const [customTopic, setCustomTopic] = useState("")
+  const [customCategory, setCustomCategory] = useState<"thematic" | "synonym" | "antonym" | "contextual">("thematic")
+  const [customWordCount, setCustomWordCount] = useState(7)
+  const [isGenerating, setIsGenerating] = useState(false)
+  
   const { toast } = useToast()
 
+  // Fetch initial clusters on component mount
   useEffect(() => {
-    // Update progress when current index changes
-    setProgress(((currentClusterIndex + 1) / wordClusters.length) * 100)
-  }, [currentClusterIndex])
+    fetchInitialClusters()
+  }, [])
+
+  // Update progress when current index changes
+  useEffect(() => {
+    if (wordClusters.length > 0) {
+      setProgress(((currentClusterIndex + 1) / wordClusters.length) * 100)
+    }
+  }, [currentClusterIndex, wordClusters.length])
 
   useEffect(() => {
-    if (mode === "sort") {
+    if (mode === "sort" && wordClusters.length > 0) {
       // Initialize sorting exercise
-      const currentCluster = wordClusters[currentClusterIndex]
-      const otherClusters = wordClusters.filter((_, index) => index !== currentClusterIndex)
-      const randomCluster = otherClusters[Math.floor(Math.random() * otherClusters.length)]
-
-      // Mix words from current cluster and another random cluster
-      const mixedWords = [...currentCluster.words, ...randomCluster.words.slice(0, 3)]
-      // Shuffle the mixed words
-      const shuffledWords = mixedWords.sort(() => Math.random() - 0.5)
-
-      setAvailableWords(shuffledWords)
-      setUserSortedWords([])
-      setIsCorrect(null)
-    } else if (mode === "speed") {
-      // Initialize speed round
-      startSpeedRound()
+      initializeSortingExercise()
     }
-  }, [mode, currentClusterIndex])
+  }, [mode, currentClusterIndex, wordClusters])
 
-  // Speed round timer
-  useEffect(() => {
-    let timer: NodeJS.Timeout
-    if (mode === "speed" && speedTimer !== null && speedTimer > 0) {
-      timer = setTimeout(() => setSpeedTimer(speedTimer - 1), 1000)
-    } else if (mode === "speed" && speedTimer === 0) {
-      // Time's up for speed round
+  // Function to fetch initial clusters
+  const fetchInitialClusters = async () => {
+    setIsLoading(true)
+    try {
+      // Create an array of demo topics to fetch clusters for
+      const demoTopics = ["Language Arts", "Science", "Business", "Emotions"]
+      const categories: ("thematic" | "synonym" | "antonym" | "contextual")[] = [
+        "thematic", "synonym", "antonym", "contextual"
+      ]
+      
+      // Fetch clusters for each topic
+      const clusterPromises = demoTopics.map((topic, index) => 
+        fetch("/api/chunking", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            topic,
+            category: categories[index % categories.length],
+            wordsCount: 7
+          }),
+        }).then(res => res.json())
+      )
+      
+      // Wait for all fetches to complete
+      const responses = await Promise.all(clusterPromises)
+      
+      // Extract clusters from responses
+      const fetchedClusters = responses.map(response => response.cluster)
+      
+      if (fetchedClusters.length > 0) {
+        setWordClusters(fetchedClusters)
+      } else {
+        throw new Error("No clusters received from API")
+      }
+    } catch (error) {
+      console.error("Error fetching initial clusters:", error)
       toast({
-        title: "Time's up!",
-        description: `You got ${speedScore} out of ${speedTotal} words correct.`,
-      })
-      setMode("learn")
-    }
-    return () => clearTimeout(timer)
-  }, [mode, speedTimer, speedScore, speedTotal, toast])
-
-  const startSpeedRound = () => {
-    setSpeedTimer(30) // 30 seconds for speed round
-    setSpeedScore(0)
-    setSpeedTotal(0)
-    presentNextSpeedWord()
-  }
-
-  const presentNextSpeedWord = () => {
-    // Randomly select a cluster
-    const randomClusterIndex = Math.floor(Math.random() * wordClusters.length)
-    const randomCluster = wordClusters[randomClusterIndex]
-
-    // Randomly select a word from that cluster
-    const randomWordIndex = Math.floor(Math.random() * randomCluster.words.length)
-    const randomWord = randomCluster.words[randomWordIndex]
-
-    setSpeedWord(randomWord)
-    setSpeedTotal((prev) => prev + 1)
-  }
-
-  const handleSpeedAnswer = (clusterId: string) => {
-    if (!speedWord) return
-
-    // Find which cluster the word belongs to
-    const correctCluster = wordClusters.find((cluster) => cluster.words.includes(speedWord))
-
-    if (correctCluster && correctCluster.id === clusterId) {
-      // Correct answer
-      setSpeedScore((prev) => prev + 1)
-      toast({
-        title: "Correct!",
-        description: `${speedWord} belongs to ${correctCluster.name}`,
-        duration: 1000,
-      })
-    } else {
-      // Wrong answer
-      toast({
-        title: "Incorrect",
-        description: `${speedWord} belongs to ${correctCluster?.name}`,
+        title: "Failed to load clusters",
+        description: "Could not fetch word clusters from the server. Please try again later.",
         variant: "destructive",
-        duration: 1000,
       })
+    } finally {
+      setIsLoading(false)
     }
-
-    // Present next word
-    presentNextSpeedWord()
   }
 
+  const initializeSortingExercise = () => {
+    if (wordClusters.length === 0) return
+    
+    const currentCluster = wordClusters[currentClusterIndex]
+    const otherClusters = wordClusters.filter((_, index) => index !== currentClusterIndex)
+    const randomCluster = otherClusters[Math.floor(Math.random() * otherClusters.length)]
+
+    // Mix words from current cluster and another random cluster
+    const mixedWords = [...currentCluster.words, ...randomCluster.words.slice(0, 3)]
+    // Shuffle the mixed words
+    const shuffledWords = mixedWords.sort(() => Math.random() - 0.5)
+
+    setAvailableWords(shuffledWords)
+    setUserSortedWords([])
+    setIsCorrect(null)
+  }
+
+  // Handle generating a custom word cluster
+  const handleGenerateCustomCluster = async () => {
+    if (!customTopic.trim()) {
+      toast({
+        title: "Topic required",
+        description: "Please enter a topic for your custom cluster",
+        variant: "destructive",
+      })
+      return
+    }
+    
+    setIsGenerating(true)
+    
+    try {
+      const response = await fetch("/api/chunking", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          topic: customTopic,
+          category: customCategory,
+          wordsCount: customWordCount
+        }),
+      })
+      
+      if (!response.ok) throw new Error("Failed to generate cluster")
+      
+      const data = await response.json()
+      
+      // Add the new cluster to the list
+      const updatedClusters = [...wordClusters, data.cluster]
+      setWordClusters(updatedClusters)
+      
+      // Go to the new cluster
+      setCurrentClusterIndex(updatedClusters.length - 1)
+      setMode("learn")
+      
+      toast({
+        title: "Cluster generated",
+        description: `New ${customCategory} cluster "${data.cluster.name}" created`,
+      })
+      
+      // Reset form and close dialog
+      setCustomTopic("")
+      setCustomDialogOpen(false)
+    } catch (error) {
+      console.error("Error generating cluster:", error)
+      toast({
+        title: "Generation failed",
+        description: "Failed to generate custom cluster. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
+  // Handle word selection for sorting
   const handleWordSelect = (word: string) => {
     if (userSortedWords.includes(word)) return
 
@@ -166,6 +190,7 @@ export default function ChunkingPage() {
     setAvailableWords(availableWords.filter((w) => w !== word))
   }
 
+  // Handle removing word from sorted list
   const handleRemoveWord = (word: string) => {
     setUserSortedWords(userSortedWords.filter((w) => w !== word))
     setAvailableWords([...availableWords, word])
@@ -174,22 +199,20 @@ export default function ChunkingPage() {
   const handleCheckSorting = () => {
     const currentCluster = wordClusters[currentClusterIndex]
 
-    // Check if all sorted words belong to the current cluster
-    const allCorrect = userSortedWords.every((word) => currentCluster.words.includes(word))
-    // Check if all cluster words are included in sorted words
-    const allIncluded = currentCluster.words.every((word) => userSortedWords.includes(word))
+    // Check if at least one sorted word belongs to the current cluster
+    const hasCorrectWord = userSortedWords.some((word) => currentCluster.words.includes(word))
 
-    setIsCorrect(allCorrect && allIncluded)
+    setIsCorrect(hasCorrectWord)
 
-    if (allCorrect && allIncluded) {
+    if (hasCorrectWord) {
       toast({
         title: "Correct sorting!",
-        description: "You've correctly identified all words in this cluster.",
+        description: "You've identified at least one word in this cluster.",
       })
     } else {
       toast({
         title: "Incorrect sorting",
-        description: "Some words are misplaced or missing. Try again.",
+        description: "No words from the cluster were selected. Try again.",
         variant: "destructive",
       })
     }
@@ -210,7 +233,51 @@ export default function ChunkingPage() {
     }
   }
 
+  if (isLoading) {
+    return (
+      <div className="container max-w-4xl py-8 space-y-6">
+        <Breadcrumb
+          items={[
+            { label: "Memory", href: "/memory", active: false },
+            { label: "Chunking", href: "/memory/chunking", active: true },
+          ]}
+        />
+        <div className="flex flex-col items-center justify-center py-12">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+          <h2 className="text-xl font-semibold">Loading word clusters...</h2>
+          <p className="text-muted-foreground">Please wait while we prepare your exercises</p>
+        </div>
+      </div>
+    )
+  }
+
+  // If no clusters were loaded, show error and retry button
+  if (wordClusters.length === 0) {
+    return (
+      <div className="container max-w-4xl py-8 space-y-6">
+        <Breadcrumb
+          items={[
+            { label: "Memory", href: "/memory", active: false },
+            { label: "Chunking", href: "/memory/chunking", active: true },
+          ]}
+        />
+        <div className="flex flex-col items-center justify-center py-12">
+          <X className="h-12 w-12 text-destructive mb-4" />
+          <h2 className="text-xl font-semibold">Failed to load word clusters</h2>
+          <p className="text-muted-foreground mb-6">We couldn't load any word clusters at the moment.</p>
+          <Button onClick={fetchInitialClusters}>
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Try Again
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
   const currentCluster = wordClusters[currentClusterIndex]
+
+console.log('userSortedWords', userSortedWords);
+console.log('availableWords', availableWords);
 
   return (
     <div className="container max-w-4xl py-8 space-y-6">
@@ -223,12 +290,77 @@ export default function ChunkingPage() {
 
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Chunking</h1>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">
-            {currentClusterIndex + 1} of {wordClusters.length}
-          </span>
-          <Progress value={progress} className="w-32" />
-        </div>
+        
+        {/* Custom Cluster Dialog */}
+        <Dialog open={customDialogOpen} onOpenChange={setCustomDialogOpen}>
+          <DialogTrigger asChild>
+            <Button variant="outline">
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Create Custom Cluster
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create Custom Word Cluster</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="topic">Topic or Theme</Label>
+                <Input 
+                  id="topic" 
+                  placeholder="E.g., Astronomy, Cooking, etc."
+                  value={customTopic}
+                  onChange={(e) => setCustomTopic(e.target.value)}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="category">Cluster Category</Label>
+                <Select 
+                  value={customCategory} 
+                  onValueChange={(value: any) => setCustomCategory(value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="thematic">Thematic</SelectItem>
+                    <SelectItem value="synonym">Synonym</SelectItem>
+                    <SelectItem value="antonym">Antonym</SelectItem>
+                    <SelectItem value="contextual">Contextual</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="wordCount">Number of Words</Label>
+                <Input 
+                  id="wordCount" 
+                  type="number"
+                  min="5"
+                  max="10"
+                  value={customWordCount}
+                  onChange={(e) => setCustomWordCount(parseInt(e.target.value) || 7)}
+                />
+              </div>
+              
+              <Button 
+                className="w-full" 
+                onClick={handleGenerateCustomCluster}
+                disabled={isGenerating || !customTopic.trim()}
+              >
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  "Generate Cluster"
+                )}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="flex justify-between items-center">
@@ -243,11 +375,11 @@ export default function ChunkingPage() {
           <Button variant={mode === "sort" ? "default" : "outline"} size="sm" onClick={() => setMode("sort")}>
             Sort
           </Button>
-          <Button variant={mode === "speed" ? "default" : "outline"} size="sm" onClick={() => setMode("speed")}>
-            Speed
-          </Button>
         </div>
       </div>
+
+      {/* Progress bar */}
+      <Progress value={progress} className="h-2" />
 
       {mode === "learn" && (
         <Card>
@@ -296,17 +428,17 @@ export default function ChunkingPage() {
               <h3 className="font-medium mb-2">Example usage</h3>
               <p className="text-sm italic">
                 {currentCluster.category === "thematic" &&
-                  `When planning my ${currentCluster.words[0].toLowerCase()}, I chose a tropical ${currentCluster.words[1].toLowerCase()} 
-                  and arranged ${currentCluster.words[2].toLowerCase()} and ${currentCluster.words[3].toLowerCase()} in advance.`}
+                  `When discussing ${currentCluster.name.toLowerCase()}, I referred to ${currentCluster.words[0]?.toLowerCase() || "concepts"}, ${currentCluster.words[1]?.toLowerCase() || "terms"}, 
+                  and explored the relationship between ${currentCluster.words[2]?.toLowerCase() || "elements"} and ${currentCluster.words[3]?.toLowerCase() || "components"}.`}
                 {currentCluster.category === "synonym" &&
-                  `The speaker was ${currentCluster.words[0].toLowerCase()}, ${currentCluster.words[1].toLowerCase()}, 
-                  and ${currentCluster.words[2].toLowerCase()}, captivating the audience with her ${currentCluster.words[3].toLowerCase()} style.`}
+                  `The writer was ${currentCluster.words[0]?.toLowerCase() || "skilled"}, ${currentCluster.words[1]?.toLowerCase() || "talented"}, 
+                  and ${currentCluster.words[2]?.toLowerCase() || "proficient"}, demonstrating ${currentCluster.words[3]?.toLowerCase() || "mastery"} in their craft.`}
                 {currentCluster.category === "antonym" &&
-                  `Her mood swings were extreme, from feeling ${currentCluster.words[0].toLowerCase()} in the morning 
-                  to ${currentCluster.words[1].toLowerCase()} by evening.`}
+                  `The results were ${currentCluster.words[0]?.toLowerCase() || "positive"} for some participants but 
+                  ${currentCluster.words[1]?.toLowerCase() || "negative"} for others.`}
                 {currentCluster.category === "contextual" &&
-                  `During the ${currentCluster.name.toLowerCase()}, we reached a ${currentCluster.words[1].toLowerCase()} 
-                  after a lengthy ${currentCluster.words[3].toLowerCase()} about the ${currentCluster.words[5].toLowerCase()}.`}
+                  `In the field of ${currentCluster.name.toLowerCase()}, experts often discuss ${currentCluster.words[0]?.toLowerCase() || "concepts"} 
+                  in relation to ${currentCluster.words[1]?.toLowerCase() || "principles"} and their impact on ${currentCluster.words[2]?.toLowerCase() || "practices"}.`}
               </p>
             </div>
           </CardContent>
@@ -329,7 +461,7 @@ export default function ChunkingPage() {
           </CardHeader>
           <CardContent className="space-y-6">
             <p>
-              Drag the words below that belong to the <strong>{currentCluster.name}</strong> cluster. Not all words
+              Click on the words below that belong to the <strong>{currentCluster.name}</strong> cluster. Not all words
               belong to this cluster!
             </p>
 
@@ -410,55 +542,6 @@ export default function ChunkingPage() {
           </CardFooter>
         </Card>
       )}
-
-      {mode === "speed" && (
-        <Card>
-          <CardHeader>
-            <div className="flex justify-between items-center">
-              <CardTitle>Speed Round</CardTitle>
-              <div className="flex items-center gap-2 text-amber-600">
-                <Clock className="h-4 w-4" />
-                <span>{speedTimer} seconds remaining</span>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="text-center py-4">
-              <h2 className="text-3xl font-bold mb-4">{speedWord}</h2>
-              <p className="text-muted-foreground">Which cluster does this word belong to?</p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {wordClusters.map((cluster) => (
-                <Button
-                  key={cluster.id}
-                  variant="outline"
-                  className="h-auto py-3 justify-start"
-                  onClick={() => handleSpeedAnswer(cluster.id)}
-                >
-                  <div className="text-left">
-                    <div className="font-medium">{cluster.name}</div>
-                    <div className="text-xs text-muted-foreground">{cluster.category} cluster</div>
-                  </div>
-                </Button>
-              ))}
-            </div>
-
-            <div className="bg-muted p-4 rounded-md text-center">
-              <div className="text-2xl font-bold">
-                {speedScore} / {speedTotal}
-              </div>
-              <p className="text-sm text-muted-foreground">Current score</p>
-            </div>
-          </CardContent>
-          <CardFooter>
-            <Button variant="outline" onClick={() => setMode("learn")} className="w-full">
-              End Speed Round
-            </Button>
-          </CardFooter>
-        </Card>
-      )}
     </div>
   )
 }
-
