@@ -39,6 +39,18 @@ export default function SentenceUsagePage() {
   const { toast } = useToast()
   const isInitialized = useRef(false)
 
+  const [wordProgress, setWordProgress] = useState(() => 
+    Array(5).fill({
+      userInput: "",
+      isCorrect: null,
+      feedback: null,
+      usageQuality: null,
+      exampleSentences: null,
+      showHint: false,
+      hintLevel: 0,
+    })
+  );
+
   // Load initial practice words
   useEffect(() => {
     async function loadPracticeWords() {
@@ -121,6 +133,18 @@ export default function SentenceUsagePage() {
       setUsageQuality(result.usageQuality || null)
       setExampleSentences(result.exampleSentences || null)
       
+      const updatedProgress = [...wordProgress];
+      updatedProgress[currentIndex] = {
+        userInput,
+        isCorrect: result.isCorrect,
+        feedback: result.feedback,
+        usageQuality: result.usageQuality || null,
+        exampleSentences: result.exampleSentences || null,
+        showHint,
+        hintLevel,
+      };
+      setWordProgress(updatedProgress);
+
       if (result.isCorrect) {
         const pointsEarned = calculatePoints(result.usageQuality || "good")
         setScore(score + pointsEarned)
@@ -175,8 +199,27 @@ export default function SentenceUsagePage() {
 
   const handleNextWord = () => {
     if (currentIndex < practiceWords.length - 1) {
-      setCurrentIndex(currentIndex + 1)
-      resetCurrentWordState()
+      const updatedProgress = [...wordProgress];
+      updatedProgress[currentIndex] = {
+        userInput,
+        isCorrect,
+        feedback,
+        usageQuality,
+        exampleSentences,
+        showHint,
+        hintLevel,
+      };
+      setWordProgress(updatedProgress);
+
+      const nextProgress = updatedProgress[currentIndex + 1];
+      setCurrentIndex(currentIndex + 1);
+      setUserInput(nextProgress.userInput);
+      setIsCorrect(nextProgress.isCorrect);
+      setFeedback(nextProgress.feedback);
+      setUsageQuality(nextProgress.usageQuality);
+      setExampleSentences(nextProgress.exampleSentences);
+      setShowHint(nextProgress.showHint);
+      setHintLevel(nextProgress.hintLevel);
     } else {
       toast({
         title: "Practice complete!",
@@ -187,8 +230,27 @@ export default function SentenceUsagePage() {
 
   const handlePreviousWord = () => {
     if (currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1)
-      resetCurrentWordState()
+      const updatedProgress = [...wordProgress];
+      updatedProgress[currentIndex] = {
+        userInput,
+        isCorrect,
+        feedback,
+        usageQuality,
+        exampleSentences,
+        showHint,
+        hintLevel,
+      };
+      setWordProgress(updatedProgress);
+
+      const prevProgress = updatedProgress[currentIndex - 1];
+      setCurrentIndex(currentIndex - 1);
+      setUserInput(prevProgress.userInput);
+      setIsCorrect(prevProgress.isCorrect);
+      setFeedback(prevProgress.feedback);
+      setUsageQuality(prevProgress.usageQuality);
+      setExampleSentences(prevProgress.exampleSentences);
+      setShowHint(prevProgress.showHint);
+      setHintLevel(prevProgress.hintLevel);
     }
   }
   
