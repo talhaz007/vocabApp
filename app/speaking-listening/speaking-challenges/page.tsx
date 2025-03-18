@@ -332,23 +332,35 @@ export default function SpeakingChallengesPage() {
   }
 
   const handleFinish = () => {
-    // Save the exercises to localStorage for feedback generation
-    const exercisesToSave = challengeProgress.map((progress, index) => {
-      const challenge = speakingChallenges[index];
-      return {
-        exerciseType: "speakingChallenge",
-        text: challenge.question,
-        detectedWords: progress.detectedWords || [],
-        isCorrect: progress.feedbackType === "success",
-        feedback: progress.feedback || "",
-        usageQuality: progress.feedbackType === "success" ? "good" : "fair"
-      };
-    });
+    // Only include exercises that have been attempted (have feedback)
+    const exercisesToSave = challengeProgress
+      .map((progress, index) => {
+        // Skip exercises that haven't been attempted
+        if (!progress.feedback) return null;
+        
+        const challenge = speakingChallenges[index];
+        return {
+          exerciseType: "speakingChallenge",
+          text: challenge.question,
+          detectedWords: progress.detectedWords || [],
+          isCorrect: progress.feedbackType === "success",
+          feedback: progress.feedback || "",
+          usageQuality: progress.feedbackType === "success" ? "good" : "fair"
+        };
+      })
+      .filter(Boolean); // Remove null entries (unattempted exercises)
     
-    localStorage.setItem('savedSpeakingListeningExercises', JSON.stringify(exercisesToSave));
-    
-    // Navigate to the feedback page
-    router.push("/speaking-listening/feedback");
+    // Only proceed if there are attempted exercises
+    if (exercisesToSave.length > 0) {
+      localStorage.setItem('savedSpeakingListeningExercises', JSON.stringify(exercisesToSave));
+      router.push("/speaking-listening/feedback");
+    } else {
+      toast({
+        title: "No exercises completed",
+        description: "Please complete at least one exercise before getting feedback",
+        variant: "destructive",
+      });
+    }
   }
 
   // Loading state

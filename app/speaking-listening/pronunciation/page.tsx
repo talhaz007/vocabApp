@@ -334,23 +334,35 @@ export default function PronunciationPage() {
   }
 
   const handleFinish = () => {
-    // Save the exercises to localStorage for feedback generation
-    const exercisesToSave = pronunciationProgress.map((progress, index) => {
-      const exercise = pronunciationWords[index];
-      return {
-        exerciseType: "pronunciation",
-        word: exercise.word,
-        isCorrect: progress.feedbackType === "success",
-        feedback: progress.feedback || "",
-        usageQuality: progress.feedbackType === "success" ? "good" : "fair"
-      };
-    });
+    // Only include exercises that have been attempted (have feedback)
+    const exercisesToSave = pronunciationProgress
+      .map((progress, index) => {
+        // Skip exercises that haven't been attempted
+        if (!progress.feedback) return null;
+        
+        const exercise = pronunciationWords[index];
+        return {
+          exerciseType: "pronunciation",
+          word: exercise.word,
+          isCorrect: progress.feedbackType === "success",
+          feedback: progress.feedback || "",
+          usageQuality: progress.feedbackType === "success" ? "good" : "fair"
+        };
+      })
+      .filter(Boolean); // Remove null entries (unattempted exercises)
     
-    localStorage.setItem('savedSpeakingListeningExercises', JSON.stringify(exercisesToSave));
-    
-    // Navigate to the feedback page
-    router.push("/speaking-listening/feedback");
-  }
+    // Only proceed if there are attempted exercises
+    if (exercisesToSave.length > 0) {
+      localStorage.setItem('savedSpeakingListeningExercises', JSON.stringify(exercisesToSave));
+      router.push("/speaking-listening/feedback");
+    } else {
+      toast({
+        title: "No exercises completed",
+        description: "Please complete at least one exercise before getting feedback",
+        variant: "destructive",
+      });
+    }
+  };
 
   const currentWord = pronunciationWords[currentIndex]
 
