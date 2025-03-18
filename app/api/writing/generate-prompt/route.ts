@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     const { difficulty, category } = body;
     
     const prompt = `
-      Generate a writing prompt for language learners.
+      Generate a writing prompt for language learners in grades 1-7.
       
       Create a thoughtful, engaging writing prompt ${difficulty ? `with ${difficulty} difficulty` : ""} 
       ${category ? `related to the category "${category}"` : ""}.
