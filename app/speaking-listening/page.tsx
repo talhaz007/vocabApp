@@ -28,8 +28,7 @@ export default function SpeakingListeningPage() {
           </CardHeader>
           <CardContent>
             <p>
-              Speak words aloud and receive instant feedback on your pronunciation. Track your progress over time and
-              focus on problem areas.
+              Speak words aloud and receive instant feedback on your pronunciation.
             </p>
           </CardContent>
           <CardFooter>
@@ -70,7 +69,7 @@ export default function SpeakingListeningPage() {
           </CardHeader>
           <CardContent>
             <p>
-              Describe images or answer questions using vocabulary words. Receive feedback on your fluency and word
+              Answer questions using vocabulary words. Receive feedback on your fluency and word
               usage.
             </p>
           </CardContent>

@@ -28,9 +28,10 @@ export default function LearnPracticePage() {
           </CardHeader>
           <CardContent>
             <p>
-              Learn words with definitions, sentence examples, and mnemonics. Practice with different modes including
-              guessing meanings and matching mnemonics.
+              Learn words with definitions, sentence examples, and mnemonics.
             </p>
+            {/* Practice with different modes including
+            guessing meanings and matching mnemonics. */}
           </CardContent>
           <CardFooter>
             <Link href="/learn-practice/flashcards" className="w-full">
