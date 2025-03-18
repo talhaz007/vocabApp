@@ -55,6 +55,15 @@ export default function ShadowingPage() {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const { toast } = useToast()
 
+  const [shadowingProgress, setShadowingProgress] = useState(() => 
+    Array(5).fill({
+      audioURL: null,
+      feedback: null,
+      feedbackType: null,
+      isProcessing: false,
+    })
+  );
+
   // Load initial shadowing exercises
   useEffect(() => {
     async function loadShadowingExercises() {
@@ -274,16 +283,46 @@ export default function ShadowingPage() {
 
   const handleNext = () => {
     if (currentIndex < shadowingExercises.length - 1) {
-      setCurrentIndex(currentIndex + 1)
-      setAudioURL(null)
-      setFeedback(null)
-      setFeedbackType(null)
-      setIsProcessing(false)
+      const updatedProgress = [...shadowingProgress];
+      updatedProgress[currentIndex] = {
+        audioURL,
+        feedback,
+        feedbackType,
+        isProcessing,
+      };
+      setShadowingProgress(updatedProgress);
+
+      const nextProgress = updatedProgress[currentIndex + 1];
+      setCurrentIndex(currentIndex + 1);
+      setAudioURL(nextProgress.audioURL);
+      setFeedback(nextProgress.feedback);
+      setFeedbackType(nextProgress.feedbackType);
+      setIsProcessing(nextProgress.isProcessing);
     } else {
       toast({
         title: "All exercises completed!",
         description: "You've completed all shadowing exercises.",
       })
+    }
+  }
+
+  const handlePrevious = () => {
+    if (currentIndex > 0) {
+      const updatedProgress = [...shadowingProgress];
+      updatedProgress[currentIndex] = {
+        audioURL,
+        feedback,
+        feedbackType,
+        isProcessing,
+      };
+      setShadowingProgress(updatedProgress);
+
+      const prevProgress = updatedProgress[currentIndex - 1];
+      setCurrentIndex(currentIndex - 1);
+      setAudioURL(prevProgress.audioURL);
+      setFeedback(prevProgress.feedback);
+      setFeedbackType(prevProgress.feedbackType);
+      setIsProcessing(prevProgress.isProcessing);
     }
   }
 
@@ -496,7 +535,7 @@ export default function ShadowingPage() {
         <CardFooter className="flex justify-between">
           <Button
             variant="outline"
-            onClick={() => setCurrentIndex(Math.max(0, currentIndex - 1))}
+            onClick={handlePrevious}
             disabled={currentIndex === 0}
           >
             Previous Exercise
