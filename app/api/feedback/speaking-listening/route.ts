@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
       
       Also provide:
       - Overall feedback on speaking and listening skills across all exercises
-      - A speaking and listening mastery score (0-100) based on overall performance
+      - A speaking and listening mastery score (0-100) based on overall performance it should be a strict score based on the correctness of the exercises
       
       Based on the user's performance, recommend exactly 2 apps from the following list that would be most helpful:
       1. Grammarly - Helps with grammar, spelling, and writing clarity
