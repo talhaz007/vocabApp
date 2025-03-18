@@ -78,6 +78,15 @@ export default function PronunciationPage() {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const { toast } = useToast()
 
+  const [pronunciationProgress, setPronunciationProgress] = useState(() => 
+    Array(5).fill({
+      audioURL: null,
+      feedback: null,
+      feedbackType: null,
+      isProcessing: false,
+    })
+  );
+
   useEffect(() => {
     async function loadPronunciationWords() {
       setIsLoading(true)
@@ -206,16 +215,46 @@ export default function PronunciationPage() {
 
   const handleNextWord = () => {
     if (currentIndex < pronunciationWords.length - 1) {
-      setCurrentIndex(currentIndex + 1)
-      setAudioURL(null)
-      setFeedback(null)
-      setFeedbackType(null)
-      setIsProcessing(false)
+      const updatedProgress = [...pronunciationProgress];
+      updatedProgress[currentIndex] = {
+        audioURL,
+        feedback,
+        feedbackType,
+        isProcessing,
+      };
+      setPronunciationProgress(updatedProgress);
+
+      const nextProgress = updatedProgress[currentIndex + 1];
+      setCurrentIndex(currentIndex + 1);
+      setAudioURL(nextProgress.audioURL);
+      setFeedback(nextProgress.feedback);
+      setFeedbackType(nextProgress.feedbackType);
+      setIsProcessing(nextProgress.isProcessing);
     } else {
       toast({
         title: "Practice complete!",
         description: "You've completed all pronunciation exercises.",
       })
+    }
+  }
+
+  const handlePreviousWord = () => {
+    if (currentIndex > 0) {
+      const updatedProgress = [...pronunciationProgress];
+      updatedProgress[currentIndex] = {
+        audioURL,
+        feedback,
+        feedbackType,
+        isProcessing,
+      };
+      setPronunciationProgress(updatedProgress);
+
+      const prevProgress = updatedProgress[currentIndex - 1];
+      setCurrentIndex(currentIndex - 1);
+      setAudioURL(prevProgress.audioURL);
+      setFeedback(prevProgress.feedback);
+      setFeedbackType(prevProgress.feedbackType);
+      setIsProcessing(prevProgress.isProcessing);
     }
   }
 
@@ -460,7 +499,7 @@ export default function PronunciationPage() {
         <CardFooter className="flex justify-between">
           <Button
             variant="outline"
-            onClick={() => setCurrentIndex(Math.max(0, currentIndex - 1))}
+            onClick={handlePreviousWord}
             disabled={currentIndex === 0}
           >
             Previous Word
