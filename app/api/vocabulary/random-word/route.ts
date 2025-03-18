@@ -29,6 +29,7 @@ export async function POST(request: NextRequest) {
     const prompt = `
       Generate a vocabulary word ${difficulty ? `with ${difficulty} difficulty` : ""} 
       ${category ? `from the category "${category}"` : ""}
+      for students in grades 1 to 7. 
       ${mnemonicType === "sound" ? 
         "with a sound-based mnemonic that is a SINGLE WORD that sounds similar to the vocabulary word. The mnemonic should NOT be a phrase or sentence, just one word that has similar phonetics." : 
         ""}

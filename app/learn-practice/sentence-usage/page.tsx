@@ -25,12 +25,16 @@ export default function SentenceUsagePage() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [userInput, setUserInput] = useState("")
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null)
+  const [feedback, setFeedback] = useState<string | null>(null)
+  const [usageQuality, setUsageQuality] = useState<string | null>(null)
+  const [exampleSentences, setExampleSentences] = useState<string[] | null>(null)
   const [showHint, setShowHint] = useState(false)
   const [hintLevel, setHintLevel] = useState(0)
   const [progress, setProgress] = useState(0)
   const [score, setScore] = useState(0)
   const [streak, setStreak] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [selectedDifficulty, setSelectedDifficulty] = useState<"easy" | "medium" | "hard" | null>(null)
   const { toast } = useToast()
   const isInitialized = useRef(false)
@@ -88,51 +92,91 @@ export default function SentenceUsagePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (practiceWords.length === 0) return
+    if (practiceWords.length === 0 || userInput.trim() === "") return
     
-    const currentWord = practiceWords[currentIndex].word.toLowerCase()
-    const userAnswer = userInput.toLowerCase().trim()
-
-    if (userAnswer === currentWord) {
-      setIsCorrect(true)
-      const pointsEarned = 5 - hintLevel
-      setScore(score + pointsEarned)
-      setStreak(streak + 1)
-
-      // Save to user's learned words in Supabase
-      try {
-        await saveLearnedWord(practiceWords[currentIndex], {
-          mastery: Math.min(100, 60 + (pointsEarned * 10)),
-          lastPracticed: new Date(),
-        })
-      } catch (error) {
-        console.error("Error saving learned word:", error)
-      }
-
-      toast({
-        title: "Correct!",
-        description: `+${pointsEarned} points! Current streak: ${streak + 1}`,
-        variant: "default",
+    setIsSubmitting(true)
+    const currentWord = practiceWords[currentIndex]
+    
+    try {
+      // Call the new API for sentence evaluation
+      const response = await fetch('/api/writing/sentence-usage', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          word: currentWord.word,
+          sentence: userInput.trim()
+        }),
       })
-    } else {
-      setIsCorrect(false)
-      setStreak(0)
+      
+      if (!response.ok) {
+        throw new Error('Failed to evaluate sentence')
+      }
+      
+      const result = await response.json()
+      
+      setIsCorrect(result.isCorrect)
+      setFeedback(result.feedback)
+      setUsageQuality(result.usageQuality || null)
+      setExampleSentences(result.exampleSentences || null)
+      
+      if (result.isCorrect) {
+        const pointsEarned = calculatePoints(result.usageQuality || "good")
+        setScore(score + pointsEarned)
+        setStreak(streak + 1)
 
+        // Save to user's learned words in Supabase
+        try {
+          await saveLearnedWord(currentWord, {
+            mastery: Math.min(100, 60 + (pointsEarned * 10)),
+            lastPracticed: new Date(),
+          })
+        } catch (error) {
+          console.error("Error saving learned word:", error)
+        }
+
+        toast({
+          title: `${result.usageQuality || "Good"} usage!`,
+          description: `+${pointsEarned} points! Current streak: ${streak + 1}`,
+          variant: "default",
+        })
+      } else {
+        setStreak(0)
+        toast({
+          title: "Needs improvement",
+          description: "Check the feedback and try again",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error evaluating sentence:", error)
       toast({
-        title: "Not quite right",
-        description: "Try again or use a hint",
+        title: "Error evaluating sentence",
+        description: "Please try again later",
         variant: "destructive",
       })
+      setIsCorrect(false)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+  
+  // Calculate points based on usage quality
+  const calculatePoints = (quality: string): number => {
+    switch(quality.toLowerCase()) {
+      case "excellent": return 5;
+      case "good": return 4;
+      case "fair": return 3;
+      case "poor": return 1;
+      default: return 3;
     }
   }
 
   const handleNextWord = () => {
     if (currentIndex < practiceWords.length - 1) {
       setCurrentIndex(currentIndex + 1)
-      setUserInput("")
-      setIsCorrect(null)
-      setShowHint(false)
-      setHintLevel(0)
+      resetCurrentWordState()
     } else {
       toast({
         title: "Practice complete!",
@@ -144,11 +188,18 @@ export default function SentenceUsagePage() {
   const handlePreviousWord = () => {
     if (currentIndex > 0) {
       setCurrentIndex(currentIndex - 1)
-      setUserInput("")
-      setIsCorrect(null)
-      setShowHint(false)
-      setHintLevel(0)
+      resetCurrentWordState()
     }
+  }
+  
+  const resetCurrentWordState = () => {
+    setUserInput("")
+    setIsCorrect(null)
+    setFeedback(null)
+    setUsageQuality(null)
+    setExampleSentences(null)
+    setShowHint(false)
+    setHintLevel(0)
   }
 
   const handleFinish = () => {
@@ -167,14 +218,23 @@ export default function SentenceUsagePage() {
   const handleChangeDifficulty = (difficulty: "easy" | "medium" | "hard" | null) => {
     setSelectedDifficulty(difficulty)
     setCurrentIndex(0)
-    setUserInput("")
-    setIsCorrect(null)
-    setShowHint(false)
-    setHintLevel(0)
+    resetCurrentWordState()
     setScore(0)
     setStreak(0)
 
     isInitialized.current = false;
+  }
+  
+  const getUsageQualityColor = (quality: string | null) => {
+    if (!quality) return "bg-muted text-foreground";
+    
+    switch(quality.toLowerCase()) {
+      case "excellent": return "bg-green-100 text-green-800 border-green-200";
+      case "good": return "bg-blue-100 text-blue-800 border-blue-200";
+      case "fair": return "bg-yellow-100 text-yellow-800 border-yellow-200";
+      case "poor": return "bg-red-100 text-red-800 border-red-200";
+      default: return "bg-muted text-foreground";
+    }
   }
 
   if (isLoading) {
@@ -188,7 +248,7 @@ export default function SentenceUsagePage() {
         />
         <div className="flex flex-col items-center justify-center h-96">
           <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-          <p className="text-lg text-muted-foreground">Generating personalized practice words...</p>
+          <p className="text-lg text-muted-foreground">Generating test...</p>
         </div>
       </div>
     )
@@ -277,44 +337,63 @@ export default function SentenceUsagePage() {
 
       <Card className="w-full">
         <CardHeader>
-          <CardTitle className="text-2xl">What word matches this definition?</CardTitle>
+          <CardTitle className="text-2xl">Write a sentence using the word "{currentWord.word}"</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="bg-muted p-6 rounded-lg">
-            <p className="text-lg">{currentWord.definition}</p>
+            <p className="text-lg">Definition: {currentWord.definition}</p>
           </div>
 
-          {currentWord.examples && currentWord.examples.length > 0 && (
-            <div>
-              <h3 className="text-lg font-medium mb-2">Example Sentences</h3>
-              <ul className="space-y-2">
-                {currentWord.examples.map((example, index) => (
-                  <li key={index} className="text-sm bg-muted p-3 rounded">
-                    {example.replace(new RegExp(currentWord.word, 'gi'), '______')}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {showHint && (
+          {/* {showHint && (
             <div className="bg-blue-50 border border-blue-200 p-4 rounded-md">
               <h3 className="text-blue-800 font-medium mb-1">Hint {hintLevel + 1}/{currentWord.hints.length}</h3>
               <p className="text-blue-700">{currentWord.hints[hintLevel]}</p>
+            </div>
+          )} */}
+          
+          {feedback && (
+            <div className={`p-4 rounded-md border ${isCorrect ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+              <div className="flex items-center gap-2 mb-2">
+                {isCorrect ? (
+                  <Check className="h-5 w-5 text-green-600" />
+                ) : (
+                  <X className="h-5 w-5 text-red-600" />
+                )}
+                <h3 className={`font-medium ${isCorrect ? 'text-green-800' : 'text-red-800'}`}>
+                  {isCorrect ? 'Good job!' : 'Try again'}
+                </h3>
+                {usageQuality && (
+                  <span className={`text-sm px-2 py-0.5 rounded-full border ${getUsageQualityColor(usageQuality)}`}>
+                    {usageQuality}
+                  </span>
+                )}
+              </div>
+              <p className={isCorrect ? 'text-green-700' : 'text-red-700'}>{feedback}</p>
+              
+              {exampleSentences && exampleSentences.length > 0 && !isCorrect && (
+                <div className="mt-3">
+                  <h4 className="text-sm font-medium text-red-800 mb-1">Example sentences:</h4>
+                  <ul className="list-disc pl-5 space-y-1">
+                    {exampleSentences.map((example, index) => (
+                      <li key={index} className="text-sm text-red-700">{example}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <label htmlFor="word-input" className="text-sm font-medium">
-                Your answer:
+                Your sentence:
               </label>
               <div className="flex gap-2">
                 <Input
                   id="word-input"
                   value={userInput}
                   onChange={(e) => setUserInput(e.target.value)}
-                  placeholder="Type the word here..."
+                  placeholder="Type a sentence using this word..."
                   className={
                     isCorrect === true
                       ? "border-green-500 focus-visible:ring-green-500"
@@ -322,7 +401,7 @@ export default function SentenceUsagePage() {
                       ? "border-red-500 focus-visible:ring-red-500"
                       : ""
                   }
-                  disabled={isCorrect === true}
+                  disabled={isSubmitting}
                 />
                 <Dialog>
                   <DialogTrigger asChild>
@@ -367,32 +446,42 @@ export default function SentenceUsagePage() {
             <div className="flex justify-between">
               {isCorrect === null ? (
                 <>
-                  <Button type="button" variant="outline" onClick={showNextHint} disabled={showHint && hintLevel === currentWord.hints.length - 1}>
+                  {/* <Button type="button" variant="outline" onClick={showNextHint} disabled={showHint && hintLevel === currentWord.hints.length - 1}>
                     {showHint ? "Next Hint" : "Show Hint"}
+                  </Button> */}
+                  {!feedback &&
+                  <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Checking...
+                      </>
+                    ) : (
+                      "Check Sentence"
+                    )}
                   </Button>
-                  <Button type="submit">Check Answer</Button>
+                  }
                 </>
               ) : isCorrect ? (
-                <div className="flex w-full justify-between">
-                  <div className="flex items-center text-green-600 gap-2">
-                    <Check className="h-5 w-5" />
-                    <span>Correct! The word is "{currentWord.word}"</span>
-                  </div>
+                <div className="flex w-full justify-end">
                   {/* <Button onClick={handleNextWord}>
-                    Next Word <ArrowRight className="ml-2 h-4 w-4" />
+                    {currentIndex === practiceWords.length - 1 ? "Finish" : "Next Word"} 
+                    <ArrowRight className="ml-2 h-4 w-4" />
                   </Button> */}
                 </div>
               ) : (
                 <div className="flex w-full justify-between">
-                  <div className="flex items-center text-red-600 gap-2">
-                    <X className="h-5 w-5" />
-                    <span>Try again or use a hint</span>
-                  </div>
+                  {/* <Button type="button" variant="outline" onClick={showNextHint} disabled={showHint && hintLevel === currentWord.hints.length - 1}>
+                    {showHint ? "Next Hint" : "Show Hint"}
+                  </Button> */}
                   <div className="flex gap-2">
-                    <Button type="button" variant="outline" onClick={showNextHint} disabled={showHint && hintLevel === currentWord.hints.length - 1}>
-                      {showHint ? "Next Hint" : "Show Hint"}
+                    {/* <Button type="button" variant="outline" onClick={() => setIsCorrect(null)}>
+                      Try Again
+                    </Button> */}
+                    <Button onClick={handleNextWord}>
+                      {currentIndex === practiceWords.length - 1 ? "Finish" : "Next Word"} 
+                      <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
-                    <Button type="submit">Check Again</Button>
                   </div>
                 </div>
               )}
@@ -410,12 +499,12 @@ export default function SentenceUsagePage() {
             </Button>
             
             {
-              currentIndex === practiceWords.length - 1 ? (
+              currentIndex === 4 ? (
                 <Button onClick={handleFinish}>
                   Finish <Check className="ml-2 h-4 w-4" />
                 </Button>
               ) : (
-                <Button onClick={handleNextWord}>
+                <Button onClick={handleNextWord} disabled={isSubmitting || currentIndex === practiceWords.length - 1}>
                   Next <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               )
