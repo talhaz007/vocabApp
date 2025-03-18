@@ -37,6 +37,20 @@ export default function WordAssociationPage() {
   const [selectedDifficulty, setSelectedDifficulty] = useState<"easy" | "medium" | "hard" | null>(null)
   const { toast } = useToast()
   const isInitialized = useRef(false)
+
+  const [wordSetProgress, setWordSetProgress] = useState(() => 
+    Array(5).fill({
+      selectedWords: [],
+      userSentence: "",
+      feedback: null,
+      feedbackType: null,
+      timeLeft: null,
+      timerActive: false,
+      showAlternatives: false,
+      alternativeSentences: [],
+    })
+  );
+
   // Load initial word sets
   useEffect(() => {
     async function loadWordSets() {
@@ -145,6 +159,15 @@ export default function WordAssociationPage() {
         currentWordSet.difficulty
       )
       
+      const updatedProgress = [...wordSetProgress];
+      updatedProgress[currentIndex] = {
+        ...updatedProgress[currentIndex],
+        feedbackType: result.isValid ? "success" : "error",
+        feedback: result.feedback,
+        alternativeSentences: result.alternativeSentences || [],
+      };
+      setWordSetProgress(updatedProgress);
+
       if (result.isValid) {
         setFeedbackType("success")
         setFeedback(result.feedback)
@@ -167,15 +190,29 @@ export default function WordAssociationPage() {
 
   const handleNextSet = () => {
     if (currentIndex < wordSets.length - 1) {
-      setCurrentIndex(currentIndex + 1)
-      setSelectedWords([])
-      setUserSentence("")
-      setFeedback(null)
-      setFeedbackType(null)
-      setTimeLeft(null)
-      setTimerActive(false)
-      setShowAlternatives(false)
-      setAlternativeSentences([])
+      const updatedProgress = [...wordSetProgress];
+      updatedProgress[currentIndex] = {
+        selectedWords,
+        userSentence,
+        feedback,
+        feedbackType,
+        timeLeft,
+        timerActive,
+        showAlternatives,
+        alternativeSentences,
+      };
+      setWordSetProgress(updatedProgress);
+
+      const nextProgress = updatedProgress[currentIndex + 1];
+      setCurrentIndex(currentIndex + 1);
+      setSelectedWords(nextProgress.selectedWords);
+      setUserSentence(nextProgress.userSentence);
+      setFeedback(nextProgress.feedback);
+      setFeedbackType(nextProgress.feedbackType);
+      setTimeLeft(nextProgress.timeLeft);
+      setTimerActive(nextProgress.timerActive);
+      setShowAlternatives(nextProgress.showAlternatives);
+      setAlternativeSentences(nextProgress.alternativeSentences);
     } else {
       toast({
         title: "All sets completed!",
@@ -186,15 +223,29 @@ export default function WordAssociationPage() {
 
   const handlePreviousWord = () => {
     if (currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1)
-      setSelectedWords([])
-      setUserSentence("")
-      setFeedback(null)
-      setFeedbackType(null)
-      setTimeLeft(null)
-      setTimerActive(false)
-      setShowAlternatives(false)
-      setAlternativeSentences([])
+      const updatedProgress = [...wordSetProgress];
+      updatedProgress[currentIndex] = {
+        selectedWords,
+        userSentence,
+        feedback,
+        feedbackType,
+        timeLeft,
+        timerActive,
+        showAlternatives,
+        alternativeSentences,
+      };
+      setWordSetProgress(updatedProgress);
+
+      const prevProgress = updatedProgress[currentIndex - 1];
+      setCurrentIndex(currentIndex - 1);
+      setSelectedWords(prevProgress.selectedWords);
+      setUserSentence(prevProgress.userSentence);
+      setFeedback(prevProgress.feedback);
+      setFeedbackType(prevProgress.feedbackType);
+      setTimeLeft(prevProgress.timeLeft);
+      setTimerActive(prevProgress.timerActive);
+      setShowAlternatives(prevProgress.showAlternatives);
+      setAlternativeSentences(prevProgress.alternativeSentences);
     }
   }
 
