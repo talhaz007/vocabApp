@@ -42,7 +42,7 @@ const VocabularyFeedback = () => {
         const parsedAnswers = JSON.parse(savedAnswers)
         
         // Call the API to process the answers
-        fetch('/api/feedback', {
+        fetch('/api/feedback/sentence-usage', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
