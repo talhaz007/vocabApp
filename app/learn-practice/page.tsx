@@ -20,7 +20,7 @@ export default function LearnPracticePage() {
         proficiency and interests, providing personalized feedback on your progress.
       </p>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8 pt-8">
         <Card className="border-l-4 border-l-blue-500">
           <CardHeader>
             <CardTitle>Flashcards</CardTitle>
@@ -86,7 +86,7 @@ export default function LearnPracticePage() {
         </Card>
       </div>
 
-      <div className="bg-muted p-6 rounded-lg mt-8">
+      {/* <div className="bg-muted p-6 rounded-lg mt-8">
         <h2 className="text-xl font-semibold mb-4">How Learn & Practice Mode Works</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="flex flex-col items-center text-center">
@@ -117,7 +117,7 @@ export default function LearnPracticePage() {
             </p>
           </div>
         </div>
-      </div>
+      </div> */}
     </div>
   )
 }

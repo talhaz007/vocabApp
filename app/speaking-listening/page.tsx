@@ -20,7 +20,7 @@ export default function SpeakingListeningPage() {
         understanding them in different contexts and accents.
       </p>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-8 pt-8">
         <Card className="border-l-4 border-l-blue-500">
           <CardHeader>
             <CardTitle>Pronunciation Feedback</CardTitle>
@@ -105,7 +105,7 @@ export default function SpeakingListeningPage() {
         </Card>
       </div>
 
-      <div className="bg-muted p-6 rounded-lg mt-8">
+      {/* <div className="bg-muted p-6 rounded-lg mt-8">
         <h2 className="text-xl font-semibold mb-4">How Speaking & Listening Mode Works</h2>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <div className="flex flex-col items-center text-center">
@@ -145,7 +145,7 @@ export default function SpeakingListeningPage() {
             </p>
           </div>
         </div>
-      </div>
+      </div> */}
     </div>
   )
 }
