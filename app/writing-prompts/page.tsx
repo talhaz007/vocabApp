@@ -2,8 +2,8 @@
 
 import type React from "react"
 
-import { useState } from "react"
-import { CheckCircle, RefreshCw, ArrowRight } from "lucide-react"
+import { useState, useEffect, useRef } from "react"
+import { CheckCircle, RefreshCw, ArrowRight, Check, X, Bell } from "lucide-react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast"
 import { Breadcrumb } from "@/components/breadcrumb"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { generateWritingPrompt, saveLearnedWord } from "@/lib/ai-word-service"
 
 interface WritingPrompt {
   id: string
@@ -80,13 +81,141 @@ export default function WritingPromptsPage() {
   const [feedback, setFeedback] = useState<string | null>(null)
   const [usedWords, setUsedWords] = useState<string[]>([])
   const [isSubmitted, setIsSubmitted] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [allPrompts, setAllPrompts] = useState<WritingPrompt[]>([]) // Store all generated prompts
+  const [filteredPrompts, setFilteredPrompts] = useState<WritingPrompt[]>([]) // Store filtered prompts
+  const [grammarSuggestions, setGrammarSuggestions] = useState<string[]>([])
+  const [styleSuggestions, setStyleSuggestions] = useState<string[]>([])
+  const [feedbackType, setFeedbackType] = useState<"success" | "error" | null>(null)
   const { toast } = useToast()
+  const isInitialized = useRef(false)
+  const [activeTab, setActiveTab] = useState<string>("write")
 
-  const filteredPrompts = writingPrompts.filter((prompt) => {
-    if (selectedCategory !== "all" && prompt.category !== selectedCategory) return false
-    if (selectedDifficulty !== "all" && prompt.difficulty !== selectedDifficulty) return false
-    return true
-  })
+  // Categories for random selection
+  const categories = ["Creative Writing", "Academic", "Persuasive", "Reflective", "Speculative", "Business", "Travel", "Technology", "Environment", "Culture"]
+
+  // Load writing prompts only once at initialization
+  useEffect(() => {
+    async function loadWritingPrompts() {
+      if (allPrompts.length > 0) return // Skip if we already have prompts
+      
+      setIsLoading(true)
+      try {
+        const newPrompts: WritingPrompt[] = []
+        
+        // Generate 2 easy prompts
+        for (let i = 0; i < 2; i++) {
+          const randomCategory = categories[Math.floor(Math.random() * categories.length)]
+          const prompt = await generateWritingPrompt({ 
+            difficulty: "easy", 
+            category: randomCategory 
+          })
+          
+          const writingPrompt: WritingPrompt = {
+            id: `prompt-easy-${i}`,
+            title: prompt.title,
+            description: prompt.description,
+            targetWords: prompt.targetWords,
+            category: prompt.category,
+            difficulty: prompt.difficulty,
+            minWords: prompt.minWords
+          }
+          newPrompts.push(writingPrompt)
+          
+          // Update the state immediately with each new prompt
+          setAllPrompts([...newPrompts])
+          setFilteredPrompts([...newPrompts])
+        }
+        
+        // Generate 2 medium prompts
+        for (let i = 0; i < 2; i++) {
+          const randomCategory = categories[Math.floor(Math.random() * categories.length)]
+          const prompt = await generateWritingPrompt({ 
+            difficulty: "medium", 
+            category: randomCategory 
+          })
+          
+          const writingPrompt: WritingPrompt = {
+            id: `prompt-medium-${i}`,
+            title: prompt.title,
+            description: prompt.description,
+            targetWords: prompt.targetWords,
+            category: prompt.category,
+            difficulty: prompt.difficulty,
+            minWords: prompt.minWords
+          }
+          newPrompts.push(writingPrompt)
+          
+          // Update the state immediately with each new prompt
+          setAllPrompts([...newPrompts])
+          setFilteredPrompts([...newPrompts])
+        }
+        
+        // Generate 1 hard prompt
+        const randomCategory = categories[Math.floor(Math.random() * categories.length)]
+        const prompt = await generateWritingPrompt({ 
+          difficulty: "hard", 
+          category: randomCategory 
+        })
+        
+        const writingPrompt: WritingPrompt = {
+          id: `prompt-hard-0`,
+          title: prompt.title,
+          description: prompt.description,
+          targetWords: prompt.targetWords,
+          category: prompt.category,
+          difficulty: prompt.difficulty,
+          minWords: prompt.minWords
+        }
+        newPrompts.push(writingPrompt)
+        
+        // Final update with all prompts
+        setAllPrompts(newPrompts)
+        setFilteredPrompts(newPrompts)
+        
+        toast({
+          title: "Writing prompts loaded",
+          description: "Your writing prompts are ready",
+        })
+      } catch (error) {
+        console.error("Error loading writing prompts:", error)
+        toast({
+          title: "Error loading prompts",
+          description: "Please try again later",
+          variant: "destructive",
+        })
+        // Fall back to sample prompts if loading fails
+        setAllPrompts(sampleWritingPrompts)
+        setFilteredPrompts(sampleWritingPrompts)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    if (!isInitialized.current) {
+      isInitialized.current = true
+      loadWritingPrompts()
+    }
+  }, [toast])
+
+  // Filter prompts when category or difficulty changes
+  useEffect(() => {
+    if (allPrompts.length === 0) return
+    
+    let filtered = [...allPrompts]
+    
+    // Apply category filter
+    if (selectedCategory !== "all") {
+      filtered = filtered.filter(prompt => prompt.category === selectedCategory)
+    }
+    
+    // Apply difficulty filter
+    if (selectedDifficulty !== "all") {
+      filtered = filtered.filter(prompt => prompt.difficulty === selectedDifficulty)
+    }
+    
+    setFilteredPrompts(filtered)
+  }, [selectedCategory, selectedDifficulty, allPrompts])
 
   const handlePromptSelect = (prompt: WritingPrompt) => {
     setSelectedPrompt(prompt)
@@ -106,12 +235,11 @@ export default function WritingPromptsPage() {
     setUsedWords(used)
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!selectedPrompt) return
 
     const wordCount = userResponse.split(/\s+/).filter((word) => word.length > 0).length
-    const usedWordCount = usedWords.length
-
+    
     if (wordCount < selectedPrompt.minWords) {
       toast({
         title: "Response too short",
@@ -121,31 +249,82 @@ export default function WritingPromptsPage() {
       return
     }
 
-    setIsSubmitted(true)
-
-    // Generate feedback based on word usage and length
-    let feedbackText = ""
-
-    if (usedWordCount === selectedPrompt.targetWords.length) {
-      feedbackText = "Excellent work! You've used all the target vocabulary words effectively in your response."
-    } else if (usedWordCount >= selectedPrompt.targetWords.length * 0.7) {
-      feedbackText = `Good job! You've used ${usedWordCount} out of ${selectedPrompt.targetWords.length} target words. Try incorporating the remaining words in your next revision.`
-    } else {
-      feedbackText = `You've used ${usedWordCount} out of ${selectedPrompt.targetWords.length} target words. Try to incorporate more vocabulary in your writing to strengthen your language skills.`
+    setIsLoading(true)
+    try {
+      // Send the response to the API for evaluation
+      const response = await fetch('/api/writing/evaluate-response', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          response: userResponse,
+          targetWords: selectedPrompt.targetWords,
+          minWords: selectedPrompt.minWords,
+          prompt: selectedPrompt.description
+        }),
+      })
+      
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`)
+      }
+      
+      const result = await response.json()
+      
+      setFeedback(result.feedback)
+      setUsedWords(result.usedWords)
+      setGrammarSuggestions(result.grammarSuggestions || [])
+      setStyleSuggestions(result.styleSuggestions || [])
+      setFeedbackType(result.isValid ? "success" : "error")
+      setIsSubmitted(true)
+      
+      // Explicitly set the active tab to "feedback" after setting feedback
+      setActiveTab("feedback")
+      
+      // Save used words to learned_words if the response is valid
+      if (result.isValid && result.usedWords.length > 0) {
+        try {
+          // Save each used word to the learned_words table
+          for (const word of result.usedWords) {
+            await saveLearnedWord(
+              {
+                word: word,
+                definition: "Used in writing exercise",
+                mnemonic: "",
+                difficulty: selectedPrompt.difficulty,
+                hints: [],
+                examples: [userResponse.substring(0, 200) + "..."], // Use part of the response as an example
+                synonyms: [],
+                antonyms: []
+              },
+              {
+                mastery: result.overallQuality === "excellent" ? 90 : 70, // Higher mastery for excellent quality
+                lastPracticed: new Date(),
+                notes: `Used in writing prompt: "${selectedPrompt.title}"`
+              }
+            )
+          }
+          
+          toast({
+            title: `${result.usedWords.length} words saved to your vocabulary`,
+            description: "Your writing progress has been recorded",
+          })
+        } catch (error) {
+          console.error("Error saving words to vocabulary:", error)
+        }
+      }
+    } catch (error) {
+      console.error("Error evaluating writing:", error)
+      toast({
+        title: "Error evaluating writing",
+        description: "Please try again later",
+        variant: "destructive",
+      })
+      setFeedback("Unable to evaluate your writing at this time.")
+      setFeedbackType("error")
+    } finally {
+      setIsLoading(false)
     }
-
-    // Add grammar and style feedback
-    if (wordCount > selectedPrompt.minWords * 1.5) {
-      feedbackText += "\n\nYour response is well-developed with good length. "
-    }
-
-    // Add suggestions for unused words
-    if (usedWordCount < selectedPrompt.targetWords.length) {
-      const unusedWords = selectedPrompt.targetWords.filter((word) => !usedWords.includes(word))
-      feedbackText += `\n\nConsider incorporating these words in your revision: ${unusedWords.join(", ")}.`
-    }
-
-    setFeedback(feedbackText)
   }
 
   const handleNewPrompt = () => {
@@ -155,6 +334,55 @@ export default function WritingPromptsPage() {
     setUsedWords([])
     setIsSubmitted(false)
   }
+
+  // Add sample writing prompts for fallback
+  const sampleWritingPrompts: WritingPrompt[] = [
+    {
+      id: "1",
+      title: "A Surprising Discovery",
+      description: "Write about a character who makes an unexpected discovery while traveling abroad.",
+      targetWords: ["Serendipity", "Astonish", "Venture", "Peculiar", "Revelation"],
+      category: "Creative Writing",
+      difficulty: "medium",
+      minWords: 100,
+    },
+    {
+      id: "2",
+      title: "Technology in Education",
+      description: "Discuss the benefits and challenges of integrating technology in modern classrooms.",
+      targetWords: ["Implement", "Enhance", "Ubiquitous", "Facilitate", "Drawback"],
+      category: "Academic",
+      difficulty: "medium",
+      minWords: 150,
+    },
+    {
+      id: "3",
+      title: "Environmental Conservation",
+      description: "Propose solutions to address a specific environmental issue in your community.",
+      targetWords: ["Sustainable", "Initiative", "Mitigate", "Collaborate", "Impact"],
+      category: "Persuasive",
+      difficulty: "hard",
+      minWords: 200,
+    },
+    {
+      id: "4",
+      title: "A Memorable Conversation",
+      description: "Describe a conversation that changed your perspective on an important topic.",
+      targetWords: ["Eloquent", "Perspective", "Profound", "Enlighten", "Discourse"],
+      category: "Reflective",
+      difficulty: "easy",
+      minWords: 80,
+    },
+    {
+      id: "5",
+      title: "Future Technology",
+      description: "Imagine and describe a new technology that might exist 50 years from now.",
+      targetWords: ["Innovative", "Revolutionary", "Paradigm", "Integrate", "Enhance"],
+      category: "Speculative",
+      difficulty: "easy",
+      minWords: 80,
+    },
+  ]
 
   return (
     <div className="container max-w-4xl py-8 space-y-6">
@@ -251,6 +479,42 @@ export default function WritingPromptsPage() {
                 </CardFooter>
               </Card>
             ))}
+            
+            {/* Show loading skeletons for remaining slots */}
+            {isLoading && Array(5 - filteredPrompts.length).fill(0).map((_, index) => (
+              <Card key={`skeleton-${index}`} className="animate-pulse">
+                <CardHeader>
+                  <div className="h-6 bg-muted rounded w-3/4 mb-2"></div>
+                  <div className="h-4 bg-muted rounded w-1/2"></div>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-4 bg-muted rounded w-full mb-2"></div>
+                  <div className="h-4 bg-muted rounded w-5/6"></div>
+                </CardContent>
+                <CardFooter>
+                  <div className="flex gap-2">
+                    <div className="h-6 bg-muted rounded w-16"></div>
+                    <div className="h-6 bg-muted rounded w-16"></div>
+                  </div>
+                </CardFooter>
+              </Card>
+            ))}
+            
+            {!isLoading && filteredPrompts.length === 0 && (
+              <div className="col-span-2 text-center py-8">
+                <p className="text-muted-foreground">No prompts match your filters. Try different criteria.</p>
+                <Button 
+                  variant="outline" 
+                  className="mt-4"
+                  onClick={() => {
+                    setSelectedCategory("all")
+                    setSelectedDifficulty("all")
+                  }}
+                >
+                  Reset Filters
+                </Button>
+              </div>
+            )}
           </div>
         </>
       ) : (
@@ -291,11 +555,19 @@ export default function WritingPromptsPage() {
               </div>
             </div>
 
-            <Tabs defaultValue="write" className="w-full">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="write">Write</TabsTrigger>
+                <TabsTrigger value="write" disabled={isSubmitted}>
+                  Write
+                </TabsTrigger>
                 <TabsTrigger value="feedback" disabled={!isSubmitted}>
                   Feedback
+                  {isSubmitted && feedback && (
+                    <span className="ml-2 relative flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                    </span>
+                  )}
                 </TabsTrigger>
               </TabsList>
               <TabsContent value="write" className="space-y-4 pt-4">
@@ -323,19 +595,68 @@ export default function WritingPromptsPage() {
                   <div className="text-sm text-muted-foreground">
                     {usedWords.length} of {selectedPrompt.targetWords.length} target words used
                   </div>
-                  <Button onClick={handleSubmit} disabled={isSubmitted || userResponse.trim().length === 0}>
+                  <Button onClick={handleSubmit} disabled={isLoading || isSubmitted || userResponse.trim().length === 0}>
                     Submit for Feedback
                   </Button>
                 </div>
               </TabsContent>
               <TabsContent value="feedback" className="space-y-4 pt-4">
                 {feedback && (
-                  <div className="bg-muted p-4 rounded-md">
-                    <h3 className="font-medium mb-2">AI Feedback</h3>
-                    <div className="space-y-2">
-                      {feedback.split("\n\n").map((paragraph, index) => (
-                        <p key={index}>{paragraph}</p>
-                      ))}
+                  <div
+                    className={`p-4 rounded-md ${
+                      feedbackType === "success" ? "bg-green-50 border border-green-200" : "bg-red-50 border border-red-200"
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      {feedbackType === "success" ? (
+                        <Check className="h-5 w-5 text-green-500 mt-0.5" />
+                      ) : (
+                        <X className="h-5 w-5 text-red-500 mt-0.5" />
+                      )}
+                      <div>
+                        <h3 className={`font-medium ${feedbackType === "success" ? "text-green-800" : "text-red-800"}`}>
+                          {feedbackType === "success" ? "Well done!" : "Keep improving"}
+                        </h3>
+                        <p className={feedbackType === "success" ? "text-green-700" : "text-red-700"}>{feedback}</p>
+                        
+                        {usedWords.length > 0 && (
+                          <div className="mt-3">
+                            <p className="font-medium text-sm">Target words used:</p>
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              {usedWords.map((word) => (
+                                <div 
+                                  key={word} 
+                                  className="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200"
+                                >
+                                  {word}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {grammarSuggestions.length > 0 && (
+                          <div className="mt-3">
+                            <p className="font-medium text-sm">Grammar suggestions:</p>
+                            <ul className="list-disc list-inside text-sm mt-1 space-y-1">
+                              {grammarSuggestions.map((suggestion, index) => (
+                                <li key={index} className="text-amber-700">{suggestion}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        
+                        {styleSuggestions.length > 0 && (
+                          <div className="mt-3">
+                            <p className="font-medium text-sm">Style suggestions:</p>
+                            <ul className="list-disc list-inside text-sm mt-1 space-y-1">
+                              {styleSuggestions.map((suggestion, index) => (
+                                <li key={index} className="text-blue-700">{suggestion}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}

@@ -381,3 +381,51 @@ export async function checkPronunciation(
       };
     }
   }
+
+  /**
+ * Generates a writing prompt with target vocabulary words
+ */
+export async function generateWritingPrompt(
+    options?: {
+      difficulty?: "easy" | "medium" | "hard";
+      category?: string;
+    }
+  ): Promise<{
+    title: string;
+    description: string;
+    targetWords: string[];
+    category: string;
+    difficulty: "easy" | "medium" | "hard";
+    minWords: number;
+  }> {
+    try {
+      const response = await fetch('/api/writing/generate-prompt', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          difficulty: options?.difficulty,
+          category: options?.category,
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("Error generating writing prompt:", error);
+      // Return a fallback prompt if generation fails
+      return {
+        title: "Technology in Daily Life",
+        description: "Discuss how technology has changed your daily routine in the past five years. What activities have become easier or more efficient? Are there any downsides to these technological changes?",
+        targetWords: ["Innovation", "Integrate", "Efficient", "Convenient", "Drawback", "Dependency"],
+        category: options?.category || "Technology",
+        difficulty: options?.difficulty || "medium",
+        minWords: options?.difficulty === "easy" ? 80 : options?.difficulty === "hard" ? 200 : 120
+      };
+    }
+  }

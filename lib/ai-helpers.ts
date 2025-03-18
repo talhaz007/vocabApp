@@ -23,6 +23,3 @@ export async function generateMnemonic(word: string, definition: string): Promis
     return "Unable to generate a mnemonic at this time. Please try again later."
   }
 }
-
-
-
