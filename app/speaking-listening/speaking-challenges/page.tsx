@@ -332,7 +332,23 @@ export default function SpeakingChallengesPage() {
   }
 
   const handleFinish = () => {
-    router.push("/speaking-listening")
+    // Save the exercises to localStorage for feedback generation
+    const exercisesToSave = challengeProgress.map((progress, index) => {
+      const challenge = speakingChallenges[index];
+      return {
+        exerciseType: "speakingChallenge",
+        text: challenge.question,
+        detectedWords: progress.detectedWords || [],
+        isCorrect: progress.feedbackType === "success",
+        feedback: progress.feedback || "",
+        usageQuality: progress.feedbackType === "success" ? "good" : "fair"
+      };
+    });
+    
+    localStorage.setItem('savedSpeakingListeningExercises', JSON.stringify(exercisesToSave));
+    
+    // Navigate to the feedback page
+    router.push("/speaking-listening/feedback");
   }
 
   // Loading state

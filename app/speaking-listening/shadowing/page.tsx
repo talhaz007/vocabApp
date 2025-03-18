@@ -335,7 +335,23 @@ export default function ShadowingPage() {
   }
 
   const handleFinish = () => {
-    router.push("/speaking-listening")
+    // Save the exercises to localStorage for feedback generation
+    const exercisesToSave = shadowingProgress.map((progress, index) => {
+      const exercise = shadowingExercises[index];
+      return {
+        exerciseType: "shadowing",
+        text: exercise.text,
+        isCorrect: progress.feedbackType === "success",
+        feedback: progress.feedback || "",
+        usageQuality: progress.feedbackType === "success" ? "good" : "fair",
+        improvementSuggestions: exercise.focusPoints
+      };
+    });
+    
+    localStorage.setItem('savedSpeakingListeningExercises', JSON.stringify(exercisesToSave));
+    
+    // Navigate to the feedback page
+    router.push("/speaking-listening/feedback");
   }
 
   // Loading state

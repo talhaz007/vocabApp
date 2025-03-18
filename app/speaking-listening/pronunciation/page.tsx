@@ -334,8 +334,22 @@ export default function PronunciationPage() {
   }
 
   const handleFinish = () => {
-    // Navigate back to the learn-practice page using Next.js router
-    router.push("/speaking-listening")
+    // Save the exercises to localStorage for feedback generation
+    const exercisesToSave = pronunciationProgress.map((progress, index) => {
+      const exercise = pronunciationWords[index];
+      return {
+        exerciseType: "pronunciation",
+        word: exercise.word,
+        isCorrect: progress.feedbackType === "success",
+        feedback: progress.feedback || "",
+        usageQuality: progress.feedbackType === "success" ? "good" : "fair"
+      };
+    });
+    
+    localStorage.setItem('savedSpeakingListeningExercises', JSON.stringify(exercisesToSave));
+    
+    // Navigate to the feedback page
+    router.push("/speaking-listening/feedback");
   }
 
   const currentWord = pronunciationWords[currentIndex]

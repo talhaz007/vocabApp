@@ -281,7 +281,25 @@ export default function AudioLearningPage() {
   }
 
   const handleFinish = () => {
-    router.push("/speaking-listening")
+    // Save the exercises to localStorage for feedback generation
+    const exercisesToSave = audioLearningProgress.map((progress, index) => {
+      const exercise = audioWords[index];
+      return {
+        exerciseType: "audioLearning",
+        word: exercise.word,
+        text: exercise.example,
+        isCorrect: progress.isCorrect === true,
+        feedback: progress.isCorrect === true 
+          ? `Correctly identified the word "${exercise.word}" after hearing it.` 
+          : `Had difficulty identifying the word "${exercise.word}" after hearing it.`,
+        usageQuality: progress.isCorrect === true ? "good" : "fair"
+      };
+    });
+    
+    localStorage.setItem('savedSpeakingListeningExercises', JSON.stringify(exercisesToSave));
+    
+    // Navigate to the feedback page
+    router.push("/speaking-listening/feedback");
   }
 
   if (isLoading) {
