@@ -244,13 +244,18 @@ export default function ChunkingPage() {
 
   const handleCheckSorting = () => {
     const currentCluster = wordClusters[currentClusterIndex]
-
-    // Check if at least one sorted word belongs to the current cluster
-    const hasCorrectWord = userSortedWords.some((word) => currentCluster.words.includes(word))
-
-    setIsCorrect(hasCorrectWord)
-
-    if (hasCorrectWord) {
+  
+    // Check if ALL sorted words belong to the current cluster
+    const allWordsCorrect = userSortedWords.every((word) => 
+      currentCluster.words.includes(word)
+    )
+    
+    // Also check that at least one word has been selected
+    const hasSelectedWords = userSortedWords.length > 0
+    
+    setIsCorrect(allWordsCorrect && hasSelectedWords)
+  
+    if (allWordsCorrect && hasSelectedWords) {
       // Save the words to the database
       saveLearnedWord({
         word: currentCluster.name,
@@ -263,17 +268,21 @@ export default function ChunkingPage() {
         mastery: 100,
         lastPracticed: new Date(),
       })
-
-      console.log('currentCluster', currentCluster.words);
-
+  
       toast({
         title: "Correct sorting!",
-        description: "You've identified at least one word in this cluster.",
+        description: "All selected words belong to this cluster.",
+      })
+    } else if (!hasSelectedWords) {
+      toast({
+        title: "No words selected",
+        description: "Please select at least one word to check.",
+        variant: "destructive",
       })
     } else {
       toast({
         title: "Incorrect sorting",
-        description: "No words from the cluster were selected. Try again.",
+        description: "One or more selected words do not belong to this cluster.",
         variant: "destructive",
       })
     }
