@@ -266,3 +266,118 @@ export async function checkPronunciation(
       };
     }
   }
+
+/**
+ * Generates a shadowing exercise with text and pronunciation focus points
+ */
+  export async function generateShadowingExercise(
+    options?: {
+      difficulty?: "easy" | "medium" | "hard";
+      category?: string;
+    }
+  ): Promise<{
+    text: string;
+    difficulty: "easy" | "medium" | "hard";
+    focusPoints: string[];
+    phonetics?: string;
+    keywords: string[];
+    category: string;
+  }> {
+    try {
+      const response = await fetch('/api/speaking/shadowing-exercise', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          difficulty: options?.difficulty,
+          category: options?.category,
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("Error generating shadowing exercise:", error);
+      // Return a fallback exercise if generation fails
+      return {
+        text: "The eloquent speaker captivated the audience with her persuasive arguments and clear delivery.",
+        difficulty: options?.difficulty || "medium",
+        focusPoints: [
+          "Stress on 'eloquent' (EL-oh-kwent)",
+          "Natural rising intonation at the end of 'audience'",
+          "Clear pronunciation of 'captivated' with stress on 'CAP'",
+          "Linking between 'with her' sounds like 'wither'",
+        ],
+        keywords: ["eloquent", "captivated", "persuasive", "delivery", "audience"],
+        category: "Public Speaking"
+      };
+    }
+  }
+
+/**
+ * Checks the pronunciation of a word or analyzes shadowing of a text
+ */
+  export async function checkShadowingPronunciation(
+    text: string,
+    audioURL: string,
+    options?: {
+      isShadowing?: boolean;
+      focusPoints?: string[];
+    }
+  ): Promise<{ 
+    accuracy: number; 
+    feedback: string; 
+    isValid?: boolean;
+    strengths?: string[];
+    improvements?: string[];
+    transcription?: string;
+    matchedWords?: number;
+    totalWords?: number;
+  }> {
+    try {
+      // Convert the audio URL to a Blob
+      const response = await fetch(audioURL);
+      const audioBlob = await response.blob();
+      
+      // Create a FormData object to send the audio file
+      const formData = new FormData();
+      formData.append('audio', audioBlob);
+      
+      let apiUrl = '/api/pronunciation/evaluate';
+      
+      // If this is a shadowing exercise, use the shadowing analysis endpoint
+      if (options?.isShadowing) {
+        apiUrl = '/api/speaking/analyze-shadowing';
+        formData.append('text', text);
+        formData.append('focusPoints', JSON.stringify(options.focusPoints || []));
+      } else {
+        formData.append('word', text);
+      }
+      
+      // Send the audio to our API endpoint
+      const apiResponse = await fetch(apiUrl, {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!apiResponse.ok) {
+        throw new Error(`API error: ${apiResponse.status}`);
+      }
+      
+      const result = await apiResponse.json();
+      return result;
+    } catch (error) {
+      console.error("Error checking pronunciation:", error);
+      // Return a fallback result if evaluation fails
+      return {
+        accuracy: 0.5,
+        feedback: "We couldn't evaluate your pronunciation. Please try again.",
+        isValid: false
+      };
+    }
+  }

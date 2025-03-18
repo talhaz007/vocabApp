@@ -1,56 +1,41 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { Volume2, Mic, Square, Play, Pause, ArrowRight, Check, X } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { Volume2, Mic, Square, Play, Pause, ArrowRight, Check, X, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Slider } from "@/components/ui/slider"
 import { useToast } from "@/hooks/use-toast"
 import { Breadcrumb } from "@/components/breadcrumb"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { generateRandomWord, saveLearnedWord, generateShadowingExercise, checkShadowingPronunciation, type WordDetails } from "@/lib/ai-word-service"
 
 interface ShadowingExercise {
   id: string
   text: string
   difficulty: "easy" | "medium" | "hard"
   focusPoints: string[]
+  keywords: string[]
+  category: string
 }
 
-// Sample shadowing exercises
+// Sample shadowing exercises for fallback
 const shadowingExercises: ShadowingExercise[] = [
   {
     id: "1",
     text: "The eloquent speaker captivated the audience with her persuasive arguments and clear delivery.",
     difficulty: "medium",
     focusPoints: ["Stress on 'eloquent'", "Natural intonation", "Clear pronunciation of 'captivated'"],
+    keywords: ["eloquent", "persuasive", "captivated"],
+    category: "Eloquent Speaker",
   },
-  {
-    id: "2",
-    text: "The ephemeral nature of social media trends makes it difficult to predict what will be popular next month.",
-    difficulty: "hard",
-    focusPoints: ["Pronunciation of 'ephemeral'", "Rhythm of the sentence", "Linking sounds between words"],
-  },
-  {
-    id: "3",
-    text: "With perseverance and dedication, you can overcome even the most challenging obstacles in your path.",
-    difficulty: "medium",
-    focusPoints: ["Stress on 'perseverance'", "Pacing throughout the sentence", "Clear articulation of 'challenging'"],
-  },
-  {
-    id: "4",
-    text: "Technology has become ubiquitous in modern society, transforming how we work, learn, and communicate.",
-    difficulty: "hard",
-    focusPoints: ["Pronunciation of 'ubiquitous'", "Smooth transitions between phrases", "Natural rhythm"],
-  },
-  {
-    id: "5",
-    text: "Finding your perfect career often involves a bit of serendipity along with careful planning and preparation.",
-    difficulty: "medium",
-    focusPoints: ["Pronunciation of 'serendipity'", "Intonation pattern", "Stress on key words"],
-  },
+  // ... other sample exercises
 ]
 
 export default function ShadowingPage() {
+  const router = useRouter()
   const [currentIndex, setCurrentIndex] = useState(0)
   const [playbackRate, setPlaybackRate] = useState(1)
   const [isPlaying, setIsPlaying] = useState(false)
@@ -60,16 +45,86 @@ export default function ShadowingPage() {
   const [feedbackType, setFeedbackType] = useState<"success" | "error" | null>(null)
   const [progress, setProgress] = useState(0)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [selectedDifficulty, setSelectedDifficulty] = useState<"easy" | "medium" | "hard" | null>(null)
+  const [shadowingExercises, setShadowingExercises] = useState<ShadowingExercise[]>([])
+  const isInitialized = useRef(false)
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const { toast } = useToast()
 
+  // Load initial shadowing exercises
+  useEffect(() => {
+    async function loadShadowingExercises() {
+      setIsLoading(true)
+      try {
+        const newExercises: ShadowingExercise[] = []
+        
+        // Generate 5 exercises sequentially
+        for (let i = 0; i < 5; i++) {
+          const exercise = await generateShadowingExercise({ 
+            difficulty: selectedDifficulty || undefined 
+          })
+          
+          const shadowingExercise: ShadowingExercise = {
+            id: `exercise-${i}`,
+            text: exercise.text,
+            difficulty: exercise.difficulty,
+            focusPoints: exercise.focusPoints,
+            keywords: exercise.keywords,
+            category: exercise.category
+          }
+          newExercises.push(shadowingExercise)
+          
+          // Show the first exercise immediately and stop loading indicator
+          if (i === 0) {
+            setShadowingExercises([shadowingExercise])
+            setIsLoading(false)
+          } else {
+            // Update with all exercises generated so far
+            setShadowingExercises([...newExercises])
+          }
+        }
+        
+        toast({
+          title: "Shadowing exercises loaded",
+          description: "Your shadowing exercises are ready",
+        })
+      } catch (error) {
+        console.error("Error loading shadowing exercises:", error)
+        toast({
+          title: "Error loading exercises",
+          description: "Please try again later",
+          variant: "destructive",
+        })
+        setIsLoading(false)
+        // Fall back to sample exercises if loading fails
+        setShadowingExercises(shadowingExercises)
+      }
+    }
+
+    if (!isInitialized.current) {
+      isInitialized.current = true
+      loadShadowingExercises()
+    }
+  }, [selectedDifficulty, toast])
+
   useEffect(() => {
     // Update progress when current index changes
     setProgress(((currentIndex + 1) / shadowingExercises.length) * 100)
-  }, [currentIndex])
+  }, [currentIndex, shadowingExercises.length])
+
+  const handleChangeDifficulty = (difficulty: "easy" | "medium" | "hard" | null) => {
+    setSelectedDifficulty(difficulty)
+    // Reset and reload exercises with new difficulty
+    setCurrentIndex(0)
+    setAudioURL(null)
+    setFeedback(null)
+    setFeedbackType(null)
+    isInitialized.current = false
+  }
 
   const speakText = () => {
     setIsPlaying(true)
@@ -157,25 +212,52 @@ export default function ShadowingPage() {
 
     setIsProcessing(true)
     try {
-      // In a real app, this would send the audio to a speech-to-text service
-      // and then compare it with the original text
+      // Use the checkPronunciation function to evaluate the shadowing
+      const currentExercise = shadowingExercises[currentIndex]
+      const result = await checkShadowingPronunciation(
+        currentExercise.text, 
+        audioURL
+      )
 
-      // Simulate processing delay
-      await new Promise((resolve) => setTimeout(resolve, 2000))
-
-      // Simulate random feedback (in a real app, this would be based on actual analysis)
-      const randomScore = Math.random()
-
-      if (randomScore > 0.7) {
+      if (result.accuracy > 0.7) {
         setFeedbackType("success")
-        setFeedback(
-          "Excellent shadowing! Your pronunciation, rhythm, and intonation closely match the original. Keep practicing to maintain this level.",
-        )
+        setFeedback(result.feedback || "Excellent shadowing! Your pronunciation and rhythm closely match the original.")
+        
+        // Use the keywords from the exercise instead of extracting words
+        const keywords = currentExercise.keywords || []
+        
+        // Save the keywords as learned words
+        try {
+          for (const word of keywords) {
+            await saveLearnedWord(
+              {
+                word: word,
+                definition: `Key vocabulary from ${currentExercise.category} shadowing exercise`,
+                mnemonic: "",
+                difficulty: currentExercise.difficulty,
+                hints: currentExercise.focusPoints,
+                examples: [currentExercise.text],
+                synonyms: [],
+                antonyms: []
+              },
+              {
+                mastery: result.accuracy * 100,
+                lastPracticed: new Date(),
+                notes: `Practiced in ${currentExercise.category} shadowing exercise`
+              }
+            )
+          }
+          
+          toast({
+            title: `${keywords.length} keywords saved to your vocabulary`,
+            description: "Your shadowing progress has been recorded",
+          })
+        } catch (error) {
+          console.error("Error saving shadowing progress:", error)
+        }
       } else {
         setFeedbackType("error")
-        setFeedback(
-          "Good effort! Try to focus more on matching the rhythm and intonation of the original. Pay special attention to the stress patterns and linking between words.",
-        )
+        setFeedback(result.feedback || "Good effort! Try to focus more on matching the rhythm and intonation of the original.")
       }
     } catch (error) {
       toast({
@@ -205,6 +287,30 @@ export default function ShadowingPage() {
     }
   }
 
+  const handleFinish = () => {
+    router.push("/speaking-listening")
+  }
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="container max-w-4xl py-8 space-y-6">
+        <Breadcrumb
+          items={[
+            { label: "Speaking & Listening", href: "/speaking-listening", active: false },
+            { label: "Shadowing", href: "/speaking-listening/shadowing", active: true },
+          ]}
+        />
+        <div className="flex justify-center items-center h-64">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
+            <p className="text-muted-foreground">Loading shadowing exercises...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   const currentExercise = shadowingExercises[currentIndex]
 
   return (
@@ -218,11 +324,45 @@ export default function ShadowingPage() {
 
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Shadowing Practice</h1>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-4">
           <span className="text-sm text-muted-foreground">
-            {currentIndex + 1} of {shadowingExercises.length}
+            {currentIndex + 1} of 5
           </span>
-          <Progress value={progress} className="w-32" />
+          {/* <Progress value={progress} className="w-32" /> */}
+          
+          {/* Add difficulty selector */}
+          <div className="flex gap-2">
+            <Button 
+              size="sm" 
+              variant={selectedDifficulty === "easy" ? "default" : "outline"}
+              onClick={() => handleChangeDifficulty("easy")}
+            >
+              Easy
+            </Button>
+            <Button 
+              size="sm" 
+              variant={selectedDifficulty === "medium" ? "default" : "outline"}
+              onClick={() => handleChangeDifficulty("medium")}
+            >
+              Medium
+            </Button>
+            <Button 
+              size="sm" 
+              variant={selectedDifficulty === "hard" ? "default" : "outline"}
+              onClick={() => handleChangeDifficulty("hard")}
+            >
+              Hard
+            </Button>
+            {selectedDifficulty && (
+              <Button 
+                size="sm" 
+                variant="ghost"
+                onClick={() => handleChangeDifficulty(null)}
+              >
+                Clear
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -362,12 +502,18 @@ export default function ShadowingPage() {
             Previous Exercise
           </Button>
 
-          {feedbackType && (
-            <Button onClick={handleNext}>
+          {
+            currentIndex === 4 ?
+            <Button onClick={handleFinish}>
+              Finish
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+            :
+            <Button disabled={isProcessing || currentIndex === shadowingExercises.length - 1} onClick={handleNext}>
               Next Exercise
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
-          )}
+          }
         </CardFooter>
       </Card>
     </div>
