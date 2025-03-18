@@ -292,6 +292,7 @@ export default function MemoryPalacePage() {
         difficulty: "easy"
       }
       saveLearnedWord(saveWord, {
+        mode: 'Memory Palace',
         mastery: 100,
         lastPracticed: new Date(),
       })

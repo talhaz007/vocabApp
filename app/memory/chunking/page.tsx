@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { saveLearnedWord } from "@/lib/ai-word-service";
 
 interface WordCluster {
   id: string
@@ -250,6 +251,21 @@ export default function ChunkingPage() {
     setIsCorrect(hasCorrectWord)
 
     if (hasCorrectWord) {
+      // Save the words to the database
+      saveLearnedWord({
+        word: currentCluster.name,
+        definition: currentCluster.description,
+        notes: currentCluster.description,
+        difficulty: "easy",
+        hints: currentCluster.words,
+      }, {
+        mode: 'Chunking',
+        mastery: 100,
+        lastPracticed: new Date(),
+      })
+
+      console.log('currentCluster', currentCluster.words);
+
       toast({
         title: "Correct sorting!",
         description: "You've identified at least one word in this cluster.",
