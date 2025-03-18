@@ -2,14 +2,15 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
-import { Volume2, Repeat, Check, X, ArrowRight, HelpCircle } from "lucide-react"
+import { useState, useEffect, useRef } from "react"
+import { Volume2, Repeat, Check, X, ArrowRight, HelpCircle, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
 import { Breadcrumb } from "@/components/breadcrumb"
+import { generateRandomWord, type WordDetails } from "@/lib/ai-word-service"
 
 interface SoundMnemonic {
   id: string
@@ -20,63 +21,75 @@ interface SoundMnemonic {
   difficulty: "easy" | "medium" | "hard"
 }
 
-// Sample sound mnemonics
-const soundMnemonics: SoundMnemonic[] = [
-  {
-    id: "1",
-    word: "Eloquent",
-    definition: "Fluent or persuasive in speaking or writing",
-    mnemonic: "Elephant",
-    soundDescription: "Imagine an elephant giving a powerful speech—an eloquent elephant!",
-    difficulty: "medium",
-  },
-  {
-    id: "2",
-    word: "Ephemeral",
-    definition: "Lasting for a very short time",
-    mnemonic: "Femoral",
-    soundDescription: "Think of a 'femoral' (thigh) pain that's thankfully ephemeral—it goes away quickly!",
-    difficulty: "hard",
-  },
-  {
-    id: "3",
-    word: "Perseverance",
-    definition: "Persistence in doing something despite difficulty",
-    mnemonic: "Per-severe-ance",
-    soundDescription: "Even through severe challenges, you advance with perseverance.",
-    difficulty: "medium",
-  },
-  {
-    id: "4",
-    word: "Ubiquitous",
-    definition: "Present, appearing, or found everywhere",
-    mnemonic: "You-be-quit-less",
-    soundDescription: "Think 'you be quit-less'—you can't quit seeing it because it's everywhere!",
-    difficulty: "hard",
-  },
-  {
-    id: "5",
-    word: "Serendipity",
-    definition: "The occurrence of events by chance in a happy or beneficial way",
-    mnemonic: "Serene-dip-ity",
-    soundDescription: "When you take a serene dip in the sea and unexpectedly find a treasure.",
-    difficulty: "medium",
-  },
-]
-
 export default function SoundMnemonicsPage() {
+  const [soundMnemonics, setSoundMnemonics] = useState<SoundMnemonic[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [mode, setMode] = useState<"learn" | "practice">("learn")
   const [userAnswer, setUserAnswer] = useState("")
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null)
   const [showHint, setShowHint] = useState(false)
   const [progress, setProgress] = useState(0)
+  const [isLoading, setIsLoading] = useState(true)
+  const [selectedDifficulty, setSelectedDifficulty] = useState<"easy" | "medium" | "hard" | null>(null)
   const { toast } = useToast()
+  const isInitialized = useRef(false)
+
+  useEffect(() => {
+    async function loadSoundMnemonics() {
+      setIsLoading(true)
+      try {
+        const newMnemonics: SoundMnemonic[] = []
+        
+        // Generate 5 mnemonics sequentially
+        for (let i = 0; i < 5; i++) {
+          const word = await generateRandomWord({ difficulty: selectedDifficulty || undefined })
+          const mnemonic: SoundMnemonic = {
+            id: `generated-${i}`,
+            word: word.word,
+            definition: word.definition,
+            mnemonic: word.mnemonic.split(":")[0], // Take just the mnemonic word part
+            soundDescription: word.mnemonic,
+            difficulty: word.difficulty
+          }
+          newMnemonics.push(mnemonic)
+          
+          // Show the first mnemonic immediately and stop loading indicator
+          if (i === 0) {
+            setSoundMnemonics([mnemonic])
+            setIsLoading(false)
+          } else {
+            // Update with all mnemonics generated so far
+            setSoundMnemonics([...newMnemonics])
+          }
+        }
+        
+        toast({
+          title: "Sound mnemonics loaded",
+          description: "Your personalized vocabulary words are ready to learn",
+        })
+      } catch (error) {
+        console.error("Error loading sound mnemonics:", error)
+        toast({
+          title: "Error loading mnemonics",
+          description: "Please try again later",
+          variant: "destructive",
+        })
+        setIsLoading(false)
+      }
+    }
+    
+    if (!isInitialized.current) {
+      isInitialized.current = true
+      loadSoundMnemonics()
+    }
+  }, [selectedDifficulty, toast])
 
   useEffect(() => {
     // Update progress when current index changes
-    setProgress(((currentIndex + 1) / soundMnemonics.length) * 100)
-  }, [currentIndex])
+    if (soundMnemonics.length > 0) {
+      setProgress(((currentIndex + 1) / soundMnemonics.length) * 100)
+    }
+  }, [currentIndex, soundMnemonics.length])
 
   const speakWord = () => {
     const utterance = new SpeechSynthesisUtterance(soundMnemonics[currentIndex].word)
@@ -139,6 +152,52 @@ export default function SoundMnemonicsPage() {
     }
   }
 
+  const handleChangeDifficulty = (difficulty: "easy" | "medium" | "hard" | null) => {
+    setSelectedDifficulty(difficulty)
+    setCurrentIndex(0)
+    setUserAnswer("")
+    setIsCorrect(null)
+    setShowHint(false)
+    // Reset initialization flag to trigger mnemonics reload
+    isInitialized.current = false
+  }
+
+  if (isLoading) {
+    return (
+      <div className="container max-w-4xl py-8 space-y-6">
+        <Breadcrumb
+          items={[
+            { label: "Memory", href: "/memory", active: false },
+            { label: "Sound Mnemonics", href: "/memory/sound-mnemonics", active: true },
+          ]}
+        />
+        <div className="flex flex-col items-center justify-center h-96">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+          <p className="text-lg text-muted-foreground">Generating personalized sound mnemonics...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (soundMnemonics.length === 0) {
+    return (
+      <div className="container max-w-4xl py-8 space-y-6">
+        <Breadcrumb
+          items={[
+            { label: "Memory", href: "/memory", active: false },
+            { label: "Sound Mnemonics", href: "/memory/sound-mnemonics", active: true },
+          ]}
+        />
+        <div className="flex flex-col items-center justify-center h-96">
+          <p className="text-lg text-muted-foreground">No sound mnemonics available. Please try again later.</p>
+          <Button onClick={() => window.location.reload()} className="mt-4">
+            Retry
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
   const currentMnemonic = soundMnemonics[currentIndex]
 
   return (
@@ -152,11 +211,46 @@ export default function SoundMnemonicsPage() {
 
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Sound Mnemonics</h1>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">
-            {currentIndex + 1} of {soundMnemonics.length}
-          </span>
-          <Progress value={progress} className="w-32" />
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">
+              {currentIndex + 1} of {soundMnemonics.length}
+            </span>
+            <Progress value={progress} className="w-32" />
+          </div>
+          
+          <div className="flex gap-2">
+            <Button 
+              size="sm" 
+              variant={selectedDifficulty === "easy" ? "default" : "outline"}
+              onClick={() => handleChangeDifficulty("easy")}
+            >
+              Easy
+            </Button>
+            <Button 
+              size="sm" 
+              variant={selectedDifficulty === "medium" ? "default" : "outline"}
+              onClick={() => handleChangeDifficulty("medium")}
+            >
+              Medium
+            </Button>
+            <Button 
+              size="sm" 
+              variant={selectedDifficulty === "hard" ? "default" : "outline"}
+              onClick={() => handleChangeDifficulty("hard")}
+            >
+              Hard
+            </Button>
+            {selectedDifficulty && (
+              <Button 
+                size="sm" 
+                variant="ghost"
+                onClick={() => handleChangeDifficulty(null)}
+              >
+                Clear
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
