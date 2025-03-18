@@ -19,6 +19,7 @@ import {
 import { Breadcrumb } from "@/components/breadcrumb"
 import { generateRandomWord, saveLearnedWord, type WordDetails } from "@/lib/ai-word-service"
 
+
 export default function SentenceUsagePage() {
   const router = useRouter()
   const [practiceWords, setPracticeWords] = useState<WordDetails[]>([])
@@ -38,6 +39,9 @@ export default function SentenceUsagePage() {
   const [selectedDifficulty, setSelectedDifficulty] = useState<"easy" | "medium" | "hard" | null>(null)
   const { toast } = useToast()
   const isInitialized = useRef(false)
+
+  // Add a new state to track saved user answers
+  const [savedAnswers, setSavedAnswers] = useState<Array<{word: string, answer: string}>>([])
 
   const [wordProgress, setWordProgress] = useState(() => 
     Array(5).fill({
@@ -208,6 +212,20 @@ export default function SentenceUsagePage() {
 
   const handleNextWord = () => {
     if (currentIndex < practiceWords.length - 1) {
+      // Save the current word and user answer to the savedAnswers array
+      if (practiceWords[currentIndex] && userInput.trim() !== "") {
+        const newSavedAnswer = {
+          word: practiceWords[currentIndex].word,
+          answer: userInput.trim()
+        };
+        
+        // Add to saved answers array
+        setSavedAnswers(prev => [...prev, newSavedAnswer]);
+        
+        // You can also log to see it's working
+        console.log("Saved answers:", [...savedAnswers, newSavedAnswer]);
+      }
+
       const updatedProgress = [...wordProgress];
       updatedProgress[currentIndex] = {
         userInput,
@@ -230,6 +248,20 @@ export default function SentenceUsagePage() {
       setShowHint(nextProgress.showHint);
       setHintLevel(nextProgress.hintLevel);
     } else {
+      // Save the last word and answer before finishing
+      if (practiceWords[currentIndex] && userInput.trim() !== "") {
+        const newSavedAnswer = {
+          word: practiceWords[currentIndex].word,
+          answer: userInput.trim()
+        };
+        
+        // Add to saved answers array
+        setSavedAnswers(prev => [...prev, newSavedAnswer]);
+        
+        // Log the final saved answers array
+        console.log("Final saved answers:", [...savedAnswers, newSavedAnswer]);
+      }
+      
       toast({
         title: "Practice complete!",
         description: `Final score: ${score}`,
@@ -274,7 +306,53 @@ export default function SentenceUsagePage() {
   }
 
   const handleFinish = () => {
-    router.push("/learn-practice")
+    // Save the final word and answer before finishing
+    if (practiceWords[currentIndex] && userInput.trim() !== "") {
+      const newSavedAnswer = {
+        word: practiceWords[currentIndex].word,
+        answer: userInput.trim()
+      };
+      
+      // Add to saved answers array
+      setSavedAnswers(prev => [...prev, newSavedAnswer]);
+    }
+  
+    // Show loading state
+    setIsLoading(true);
+  
+    // Make an API request to send savedAnswers
+    fetch('/api/feedback', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ savedAnswers })
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Failed to send feedback');
+      }
+      return response.json();
+    })
+    .then(data => {
+      console.log('Feedback received:', data);
+      
+      // Store the feedback data in localStorage to access it on the feedback page
+      localStorage.setItem('vocabularyFeedback', JSON.stringify(data));
+      
+      // Navigate to the feedback page - without trying to pass data in the URL
+      router.push('/learn-practice/feedback');
+    })
+    .catch(error => {
+      console.error("Error sending feedback:", error);
+      setIsLoading(false);
+      
+      toast({
+        title: "Error generating feedback",
+        description: "Please try again later",
+        variant: "destructive",
+      });
+    });
   }
 
   const showNextHint = () => {
@@ -292,6 +370,8 @@ export default function SentenceUsagePage() {
     resetCurrentWordState()
     setScore(0)
     setStreak(0)
+    // Reset saved answers when changing difficulty
+    setSavedAnswers([])
 
     isInitialized.current = false;
   }
@@ -345,7 +425,7 @@ export default function SentenceUsagePage() {
   }
 
   const currentWord = practiceWords[currentIndex]
-
+  console.log("savedAnswers", savedAnswers);
   return (
     <div className="container max-w-4xl py-8 space-y-6">
       <Breadcrumb
