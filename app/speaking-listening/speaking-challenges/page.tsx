@@ -41,6 +41,16 @@ export default function SpeakingChallengesPage() {
   // Add a state for feedback type
   const [feedbackType, setFeedbackType] = useState<"success" | "error" | null>(null)
 
+  const [challengeProgress, setChallengeProgress] = useState(() => 
+    Array(5).fill({
+      audioURL: null,
+      feedback: null,
+      feedbackType: null,
+      detectedWords: [],
+      isProcessing: false,
+    })
+  );
+
   // Load initial speaking challenges
   useEffect(() => {
     async function loadSpeakingChallenges() {
@@ -266,12 +276,23 @@ export default function SpeakingChallengesPage() {
 
   const handleNextChallenge = () => {
     if (currentIndex < speakingChallenges.length - 1) {
-      setCurrentIndex(currentIndex + 1)
-      setAudioURL(null)
-      setFeedback(null)
-      setFeedbackType(null)
-      setDetectedWords([])
-      setIsProcessing(false)
+      const updatedProgress = [...challengeProgress];
+      updatedProgress[currentIndex] = {
+        audioURL,
+        feedback,
+        feedbackType,
+        detectedWords,
+        isProcessing,
+      };
+      setChallengeProgress(updatedProgress);
+
+      const nextProgress = updatedProgress[currentIndex + 1];
+      setCurrentIndex(currentIndex + 1);
+      setAudioURL(nextProgress.audioURL);
+      setFeedback(nextProgress.feedback);
+      setFeedbackType(nextProgress.feedbackType);
+      setDetectedWords(nextProgress.detectedWords);
+      setIsProcessing(nextProgress.isProcessing);
     } else {
       toast({
         title: "All challenges completed!",
@@ -282,12 +303,23 @@ export default function SpeakingChallengesPage() {
 
   const handlePreviousWord = () => {
     if (currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1)
-      setAudioURL(null)
-      setFeedback(null)
-      setFeedbackType(null)
-      setDetectedWords([])
-      setIsProcessing(false)
+      const updatedProgress = [...challengeProgress];
+      updatedProgress[currentIndex] = {
+        audioURL,
+        feedback,
+        feedbackType,
+        detectedWords,
+        isProcessing,
+      };
+      setChallengeProgress(updatedProgress);
+
+      const prevProgress = updatedProgress[currentIndex - 1];
+      setCurrentIndex(currentIndex - 1);
+      setAudioURL(prevProgress.audioURL);
+      setFeedback(prevProgress.feedback);
+      setFeedbackType(prevProgress.feedbackType);
+      setDetectedWords(prevProgress.detectedWords);
+      setIsProcessing(prevProgress.isProcessing);
     }
   }
 
