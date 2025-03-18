@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
     // Return a fallback exercise if generation fails
     return NextResponse.json({
       text: "The eloquent speaker captivated the audience with her persuasive arguments and clear delivery.",
-      difficulty: difficulty || "medium",
+      difficulty: "medium",
       focusPoints: [
         "Stress on 'eloquent' (EL-oh-kwent)",
         "Natural rising intonation at the end of 'audience'",
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
       ],
       phonetics: "ði ˈɛləkwənt ˈspikər ˈkæptɪveɪtɪd ði ˈɔdiəns wɪð hɜr pərˈsweɪsɪv ˈɑrɡjəmənts ænd klɪr dɪˈlɪvəri",
       keywords: ["eloquent", "captivated", "persuasive", "delivery", "audience"],
-      category: category || "Public Speaking"
+      category:  "Public Speaking"
     }, { status: 500 });
   }
 } 

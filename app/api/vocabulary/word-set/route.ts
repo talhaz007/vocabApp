@@ -58,8 +58,8 @@ export async function POST(request: NextRequest) {
         "The future of development depends on sustainable technology.",
         "Progress in technology has accelerated in recent decades."
       ],
-      question: includeQuestion ? 
-        "How might technological innovation shape our future?" : undefined
+      question: 
+        "How might technological innovation shape our future?" 
     }, { status: 500 });
   }
 } 

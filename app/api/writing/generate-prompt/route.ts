@@ -64,9 +64,9 @@ export async function POST(request: NextRequest) {
       title: "Technology in Daily Life",
       description: "Discuss how technology has changed your daily routine in the past five years. What activities have become easier or more efficient? Are there any downsides to these technological changes?",
       targetWords: ["Innovation", "Integrate", "Efficient", "Convenient", "Drawback", "Dependency"],
-      category: category || "Technology",
-      difficulty: difficulty || "medium",
-      minWords: difficulty === "easy" ? 80 : difficulty === "hard" ? 200 : 120
+      category: "Technology",
+      difficulty: "medium",
+      minWords: 120
     }, { status: 500 });
   }
 } 

@@ -70,14 +70,18 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Error generating vocabulary cluster:", error);
     
+    // Ensure body is defined before using it
+    const fallbackTopic =  "Vocabulary Cluster";
+    const fallbackCategory = "thematic";
+
     // Return a fallback cluster if generation fails
     return NextResponse.json({
       cluster: {
-        id: body?.topic?.toLowerCase().replace(/\s+/g, '-') || "custom-" + Date.now(),
-        name: body?.topic || "Vocabulary Cluster",
+        id: fallbackTopic.toLowerCase().replace(/\s+/g, '-') || "custom-" + Date.now(),
+        name: fallbackTopic,
         description: "A set of related words",
         words: ["Example", "Sample", "Illustration", "Instance", "Demonstration", "Model", "Prototype"],
-        category: body?.category || "thematic"
+        category: fallbackCategory
       }
     }, { status: 500 });
   }
