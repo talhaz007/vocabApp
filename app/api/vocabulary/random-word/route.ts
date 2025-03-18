@@ -17,6 +17,8 @@ const WordDetailsSchema = z.object({
   examples: z.array(z.string()),
   synonyms: z.array(z.string()),
   antonyms: z.array(z.string()),
+  phonetic: z.string(),
+  pronunciationTips: z.array(z.string()),
 });
 
 export async function POST(request: NextRequest) {
@@ -35,7 +37,7 @@ export async function POST(request: NextRequest) {
       messages: [
         { 
           role: "system", 
-          content: "You are a vocabulary expert. Generate detailed vocabulary words with definitions, mnemonics, and examples."
+          content: "You are a vocabulary and pronunciation expert. Generate detailed vocabulary words with definitions, mnemonics, examples, and pronunciation guidance."
         },
         { 
           role: "user", 
@@ -67,7 +69,14 @@ export async function POST(request: NextRequest) {
         "The discovery of penicillin was a case of serendipity in scientific research."
       ],
       synonyms: ["chance", "fortune", "luck", "providence", "happenstance"],
-      antonyms: ["misfortune", "design", "plan", "intention"]
+      antonyms: ["misfortune", "design", "plan", "intention"],
+      phonetic: "/ˌsɛrənˈdɪpɪti/",
+      pronunciationTips: [
+        "Break it down: ser-en-DIP-i-ty",
+        "The stress is on the third syllable (DIP)",
+        "The 'i' in 'dip' is short, like in 'tip'",
+        "The final 'y' sounds like 'ee'"
+      ]
     }, { status: 500 });
   }
 } 

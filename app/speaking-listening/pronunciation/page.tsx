@@ -1,14 +1,15 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { Mic, Volume2, Play, Square, RotateCcw, CheckCircle, XCircle } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { Mic, Volume2, Play, Square, RotateCcw, CheckCircle, XCircle, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Slider } from "@/components/ui/slider"
 import { useToast } from "@/hooks/use-toast"
-import { checkPronunciation } from "@/lib/ai-helpers"
 import { Breadcrumb } from "@/components/breadcrumb"
+import { generateRandomWord, saveLearnedWord, checkPronunciation, type WordDetails } from "@/lib/ai-word-service"
 
 interface PronunciationWord {
   id: string
@@ -58,6 +59,7 @@ const pronunciationWords: PronunciationWord[] = [
 ]
 
 export default function PronunciationPage() {
+  const router = useRouter()
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isRecording, setIsRecording] = useState(false)
   const [audioURL, setAudioURL] = useState<string | null>(null)
@@ -66,11 +68,68 @@ export default function PronunciationPage() {
   const [progress, setProgress] = useState(0)
   const [playbackRate, setPlaybackRate] = useState(1)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [selectedDifficulty, setSelectedDifficulty] = useState<"easy" | "medium" | "hard" | null>(null)
+  const [pronunciationWords, setPronunciationWords] = useState<PronunciationWord[]>([])
+  const isInitialized = useRef(false)
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const { toast } = useToast()
+
+  useEffect(() => {
+    async function loadPronunciationWords() {
+      setIsLoading(true)
+      try {
+        const newWords: PronunciationWord[] = []
+        
+        // Generate 5 words sequentially
+        for (let i = 0; i < 5; i++) {
+          const word = await generateRandomWord({ difficulty: selectedDifficulty || undefined })
+          const pronunciationWord: PronunciationWord = {
+            id: `word-${i}`,
+            word: word.word,
+            // Use the phonetic transcription from the API if available
+            phonetic: word.phonetic || `/ˈ${word.word.toLowerCase()}/`,
+            // Use pronunciation tips if available, otherwise fall back to hints
+            tips: word.pronunciationTips || word.hints.slice(0, 3),
+            difficulty: word.difficulty as "easy" | "medium" | "hard"
+          }
+          newWords.push(pronunciationWord)
+          
+          // Show the first word immediately and stop loading indicator
+          if (i === 0) {
+            setPronunciationWords([pronunciationWord])
+            setIsLoading(false)
+          } else {
+            // Update with all words generated so far
+            setPronunciationWords([...newWords])
+          }
+        }
+        
+        toast({
+          title: "Pronunciation words loaded",
+          description: "Your pronunciation exercises are ready",
+        })
+      } catch (error) {
+        console.error("Error loading pronunciation words:", error)
+        toast({
+          title: "Error loading words",
+          description: "Please try again later",
+          variant: "destructive",
+        })
+        setIsLoading(false)
+        // Fall back to sample words if loading fails
+        setPronunciationWords(samplePronunciationWords)
+      }
+    }
+
+    if (!isInitialized.current) {
+      isInitialized.current = true
+      loadPronunciationWords()
+    }
+  }, [selectedDifficulty, toast])
 
   useEffect(() => {
     // Update progress when current index changes
@@ -166,6 +225,15 @@ export default function PronunciationPage() {
     setFeedbackType(null)
   }
 
+  const handleChangeDifficulty = (difficulty: "easy" | "medium" | "hard" | null) => {
+    setSelectedDifficulty(difficulty)
+    setCurrentIndex(0)
+    setAudioURL(null)
+    setFeedback(null)
+    setFeedbackType(null)
+    isInitialized.current = false
+  }
+
   const analyzePronunciation = async () => {
     if (!audioURL) return
 
@@ -177,6 +245,29 @@ export default function PronunciationPage() {
       if (result.accuracy > 0.7) {
         setFeedbackType("success")
         setFeedback(result.feedback || "Great pronunciation! You said it correctly.")
+        
+        // Save the word as learned
+        try {
+          saveLearnedWord(
+            {
+              word: currentWord,
+              definition: "Practiced pronunciation",
+              mnemonic: "",
+              difficulty: pronunciationWords[currentIndex].difficulty,
+              hints: pronunciationWords[currentIndex].tips,
+              examples: [],
+              synonyms: [],
+              antonyms: []
+            },
+            {
+              mastery: result.accuracy * 100,
+              lastPracticed: new Date(),
+              notes: "Practiced in pronunciation exercise"
+            }
+          )
+        } catch (error) {
+          console.error("Error saving pronunciation progress:", error)
+        }
       } else {
         setFeedbackType("error")
         setFeedback(result.feedback || "Try again with the pronunciation tips below.")
@@ -194,7 +285,29 @@ export default function PronunciationPage() {
     }
   }
 
+  const handleFinish = () => {
+    // Navigate back to the learn-practice page using Next.js router
+    router.push("/speaking-listening")
+  }
+
   const currentWord = pronunciationWords[currentIndex]
+
+  if (isLoading) {
+    return (
+      <div className="container max-w-4xl py-8 space-y-6">
+        <Breadcrumb
+          items={[
+            { label: "Speaking & Listening", href: "/speaking-listening", active: false },
+            { label: "Pronunciation", href: "/speaking-listening/pronunciation", active: true },
+          ]}
+        />
+        <div className="flex flex-col items-center justify-center h-96">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+          <p className="text-lg text-muted-foreground">Generating pronunciation exercises...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="container max-w-4xl py-8 space-y-6">
@@ -207,11 +320,44 @@ export default function PronunciationPage() {
 
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Pronunciation Coach</h1>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-4">
           <span className="text-sm text-muted-foreground">
-            {currentIndex + 1} of {pronunciationWords.length}
+            {currentIndex + 1} of 5
           </span>
-          <Progress value={progress} className="w-32" />
+          {/* <Progress value={progress} className="w-32" /> */}
+          
+          <div className="flex gap-2">
+            <Button 
+              size="sm" 
+              variant={selectedDifficulty === "easy" ? "default" : "outline"}
+              onClick={() => handleChangeDifficulty("easy")}
+            >
+              Easy
+            </Button>
+            <Button 
+              size="sm" 
+              variant={selectedDifficulty === "medium" ? "default" : "outline"}
+              onClick={() => handleChangeDifficulty("medium")}
+            >
+              Medium
+            </Button>
+            <Button 
+              size="sm" 
+              variant={selectedDifficulty === "hard" ? "default" : "outline"}
+              onClick={() => handleChangeDifficulty("hard")}
+            >
+              Hard
+            </Button>
+            {selectedDifficulty && (
+              <Button 
+                size="sm" 
+                variant="ghost"
+                onClick={() => handleChangeDifficulty(null)}
+              >
+                Clear
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -319,12 +465,22 @@ export default function PronunciationPage() {
           >
             Previous Word
           </Button>
-          <Button onClick={handleNextWord} disabled={currentIndex === pronunciationWords.length - 1 && !feedbackType}>
-            {currentIndex === pronunciationWords.length - 1 ? "Finish" : "Next Word"}
-          </Button>
+          {currentIndex === 4 ? (
+            <Button onClick={handleFinish} variant="default">
+              Finish
+            </Button>
+          ) : (
+            <Button onClick={handleNextWord} disabled={currentIndex === pronunciationWords.length - 1}>
+              Next
+            </Button>
+          )}
         </CardFooter>
       </Card>
     </div>
   )
 }
+
+const samplePronunciationWords: PronunciationWord[] = [
+  // ... existing sample words ...
+]
 

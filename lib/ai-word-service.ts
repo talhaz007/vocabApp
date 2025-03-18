@@ -8,6 +8,8 @@ export interface WordDetails {
   examples: string[];
   synonyms: string[];
   antonyms: string[];
+  phonetic?: string;
+  pronunciationTips?: string[];
 }
 
 export interface WordSet {
@@ -220,3 +222,42 @@ export async function saveLearnedWord(
     return false
   }
 } 
+
+/**
+ * Checks the pronunciation of a word using the audio recording
+ */
+export async function checkPronunciation(
+    word: string,
+    audioURL: string
+  ): Promise<{ accuracy: number; feedback: string; errors?: string[]; suggestions?: string[] }> {
+    try {
+      // Convert the audio URL to a Blob
+      const response = await fetch(audioURL);
+      const audioBlob = await response.blob();
+      
+      // Create a FormData object to send the audio file
+      const formData = new FormData();
+      formData.append('audio', audioBlob);
+      formData.append('word', word);
+      
+      // Send the audio to our API endpoint
+      const apiResponse = await fetch('/api/pronunciation/evaluate', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!apiResponse.ok) {
+        throw new Error(`API error: ${apiResponse.status}`);
+      }
+      
+      const result = await apiResponse.json();
+      return result;
+    } catch (error) {
+      console.error("Error checking pronunciation:", error);
+      // Return a fallback result if evaluation fails
+      return {
+        accuracy: 0.5,
+        feedback: "We couldn't evaluate your pronunciation. Please try again.",
+      };
+    }
+  }
