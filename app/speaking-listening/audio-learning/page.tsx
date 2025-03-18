@@ -53,6 +53,13 @@ export default function AudioLearningPage() {
   const isInitialized = useRef(false)
   const { toast } = useToast()
 
+  const [audioLearningProgress, setAudioLearningProgress] = useState(() => 
+    Array(5).fill({
+      userAnswer: "",
+      isCorrect: null,
+    })
+  );
+
   // Load initial audio words
   useEffect(() => {
     async function loadAudioWords() {
@@ -222,9 +229,17 @@ export default function AudioLearningPage() {
 
   const handleNext = () => {
     if (currentIndex < audioWords.length - 1) {
-      setCurrentIndex(currentIndex + 1)
-      setUserAnswer("")
-      setIsCorrect(null)
+      const updatedProgress = [...audioLearningProgress];
+      updatedProgress[currentIndex] = {
+        userAnswer,
+        isCorrect,
+      };
+      setAudioLearningProgress(updatedProgress);
+
+      const nextProgress = updatedProgress[currentIndex + 1];
+      setCurrentIndex(currentIndex + 1);
+      setUserAnswer(nextProgress.userAnswer);
+      setIsCorrect(nextProgress.isCorrect);
     } else {
       toast({
         title: "Exercise complete!",
@@ -235,9 +250,17 @@ export default function AudioLearningPage() {
 
   const handlePrevious = () => {
     if (currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1)
-      setUserAnswer("")
-      setIsCorrect(null)
+      const updatedProgress = [...audioLearningProgress];
+      updatedProgress[currentIndex] = {
+        userAnswer,
+        isCorrect,
+      };
+      setAudioLearningProgress(updatedProgress);
+
+      const prevProgress = updatedProgress[currentIndex - 1];
+      setCurrentIndex(currentIndex - 1);
+      setUserAnswer(prevProgress.userAnswer);
+      setIsCorrect(prevProgress.isCorrect);
     }
   }
 
