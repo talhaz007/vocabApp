@@ -33,6 +33,7 @@ export async function generateRandomWord(
   options?: {
     difficulty?: "easy" | "medium" | "hard"
     category?: string
+    mnemonicType?: "sound" | "visual" | "standard"
   }
 ): Promise<WordDetails> {
   try {
@@ -44,6 +45,7 @@ export async function generateRandomWord(
       body: JSON.stringify({
         difficulty: options?.difficulty,
         category: options?.category,
+        mnemonicType: options?.mnemonicType,
       }),
     })
     

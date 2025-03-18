@@ -24,11 +24,14 @@ const WordDetailsSchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { difficulty, category } = body;
+    const { difficulty, category, mnemonicType } = body;
     
     const prompt = `
       Generate a vocabulary word ${difficulty ? `with ${difficulty} difficulty` : ""} 
-      ${category ? `from the category "${category}"` : ""}.
+      ${category ? `from the category "${category}"` : ""}
+      ${mnemonicType === "sound" ? 
+        "with a sound-based mnemonic that is a SINGLE WORD that sounds similar to the vocabulary word. The mnemonic should NOT be a phrase or sentence, just one word that has similar phonetics." : 
+        ""}
     `;
 
     const completion = await openai.beta.chat.completions.parse({

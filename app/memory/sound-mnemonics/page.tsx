@@ -42,12 +42,21 @@ export default function SoundMnemonicsPage() {
         
         // Generate 5 mnemonics sequentially
         for (let i = 0; i < 5; i++) {
-          const word = await generateRandomWord({ difficulty: selectedDifficulty || undefined })
+          const word = await generateRandomWord({ 
+            difficulty: selectedDifficulty || undefined,
+            mnemonicType: "sound" // Add this flag to request sound-based single word mnemonics
+          })
+          
+          // Extract just the mnemonic word from the full description
+          let mnemonicWord = word.mnemonic.split(":")[0].trim()
+          // Further clean up to ensure we get just a single word
+          mnemonicWord = mnemonicWord.split(" ")[0].replace(/[^a-zA-Z]/g, "")
+          
           const mnemonic: SoundMnemonic = {
             id: `generated-${i}`,
             word: word.word,
             definition: word.definition,
-            mnemonic: word.mnemonic.split(":")[0], // Take just the mnemonic word part
+            mnemonic: word.mnemonic,
             soundDescription: word.mnemonic,
             difficulty: word.difficulty
           }
