@@ -4,7 +4,6 @@ import { useState, useEffect } from "react"
 import { Check, X, ArrowRight, RefreshCw, PlusCircle, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Progress } from "@/components/ui/progress"
 import { useToast } from "@/hooks/use-toast"
 import { Breadcrumb } from "@/components/breadcrumb"
 import { Badge } from "@/components/ui/badge"
@@ -38,6 +37,9 @@ export default function ChunkingPage() {
   const [customWordCount, setCustomWordCount] = useState(7)
   const [isGenerating, setIsGenerating] = useState(false)
   
+  const [isAwaitingResponse, setIsAwaitingResponse] = useState(false)
+  const [isLastCluster, setIsLastCluster] = useState(false)
+  
   const { toast } = useToast()
 
   // Fetch initial clusters on component mount
@@ -61,39 +63,46 @@ export default function ChunkingPage() {
 
   // Function to fetch initial clusters
   const fetchInitialClusters = async () => {
-    setIsLoading(true)
+    setIsLoading(true) // Start loading
     try {
       // Create an array of demo topics to fetch clusters for
-      const demoTopics = ["Language Arts", "Science", "Business", "Emotions"]
+      const demoTopics = ["Plants", "Science", "Business", "Ocean", "Seasons", "Sports", "Animals", "Music"]
       const categories: ("thematic" | "synonym" | "antonym" | "contextual")[] = [
         "thematic", "synonym", "antonym", "contextual"
       ]
       
-      // Fetch clusters for each topic
-      const clusterPromises = demoTopics.map((topic, index) => 
-        fetch("/api/chunking", {
+      // Shuffle the demoTopics and categories arrays
+      const shuffledTopics = demoTopics.sort(() => Math.random() - 0.5)
+      const shuffledCategories = categories.sort(() => Math.random() - 0.5)
+
+      // Fetch clusters for each topic one by one
+      for (let index = 0; index < shuffledTopics.length; index++) {
+        const topic = shuffledTopics[index]
+        const category = shuffledCategories[index % shuffledCategories.length]
+        
+        const response = await fetch("/api/chunking", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
             topic,
-            category: categories[index % categories.length],
+            category,
             wordsCount: 7
           }),
-        }).then(res => res.json())
-      )
-      
-      // Wait for all fetches to complete
-      const responses = await Promise.all(clusterPromises)
-      
-      // Extract clusters from responses
-      const fetchedClusters = responses.map(response => response.cluster)
-      
-      if (fetchedClusters.length > 0) {
-        setWordClusters(fetchedClusters)
-      } else {
-        throw new Error("No clusters received from API")
+        })
+        
+        if (!response.ok) throw new Error("Failed to fetch cluster")
+        
+        const data = await response.json()
+        
+        // Add the new cluster to the list
+        setWordClusters(prevClusters => [...prevClusters, data.cluster])
+        
+        // Stop loading after the first cluster is fetched
+        if (wordClusters.length === 0) {
+          setIsLoading(false) // Stop loading after the first cluster is added
+        }
       }
     } catch (error) {
       console.error("Error fetching initial clusters:", error)
@@ -103,7 +112,10 @@ export default function ChunkingPage() {
         variant: "destructive",
       })
     } finally {
-      setIsLoading(false)
+      // Ensure loading is stopped if no clusters were fetched
+      if (wordClusters.length === 0) {
+        setIsLoading(false)
+      }
     }
   }
 
@@ -218,11 +230,14 @@ export default function ChunkingPage() {
     }
   }
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentClusterIndex < wordClusters.length - 1) {
+      setIsAwaitingResponse(true)
       setCurrentClusterIndex(currentClusterIndex + 1)
       setMode("learn")
+      setIsAwaitingResponse(false)
     } else {
+      setIsLastCluster(true)
       toast({
         title: "Exercise complete!",
         description: "You've completed all word chunking exercises.",
@@ -276,9 +291,9 @@ export default function ChunkingPage() {
 
   const currentCluster = wordClusters[currentClusterIndex]
 
-console.log('userSortedWords', userSortedWords);
-console.log('availableWords', availableWords);
 
+console.log('availableWords', availableWords);
+console.log('currentCluster', currentCluster);
   return (
     <div className="container max-w-4xl py-8 space-y-6">
       <Breadcrumb
@@ -378,9 +393,6 @@ console.log('availableWords', availableWords);
         </div>
       </div>
 
-      {/* Progress bar */}
-      <Progress value={progress} className="h-2" />
-
       {mode === "learn" && (
         <Card>
           <CardHeader>
@@ -446,8 +458,8 @@ console.log('availableWords', availableWords);
             <Button variant="outline" onClick={() => setMode("sort")}>
               Practice Sorting
             </Button>
-            <Button onClick={handleNext}>
-              {currentClusterIndex < wordClusters.length - 1 ? "Next Cluster" : "Finish"}
+            <Button onClick={handleNext} disabled={isAwaitingResponse}>
+              {isLastCluster ? "Next Cluster" : "Next Cluster"}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </CardFooter>
