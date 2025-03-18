@@ -14,7 +14,8 @@ const WordClusterSchema = z.object({
   name: z.string(),
   description: z.string(),
   words: z.array(z.string()),
-  category: z.enum(["thematic", "synonym", "antonym", "contextual"])
+  category: z.enum(["thematic", "synonym", "antonym", "contextual"]),
+  randomWords: z.array(z.string())
 });
 
 const WordClusterResponseSchema = z.object({
@@ -40,6 +41,7 @@ export async function POST(request: NextRequest) {
       Generate a ${clusterCategory} word cluster about "${topic}" 
       with ${wordCount} words.
       Include a description.
+      Also generate 5 random words that are not part of the current cluster. They should not be related to the topic.
     `;
 
     const completion = await openai.beta.chat.completions.parse({

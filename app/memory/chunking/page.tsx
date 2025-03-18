@@ -18,6 +18,7 @@ interface WordCluster {
   description: string
   words: string[]
   category: "thematic" | "synonym" | "antonym" | "contextual"
+  randomWords: string[]
 }
 
 export default function ChunkingPage() {
@@ -40,12 +41,20 @@ export default function ChunkingPage() {
   const [isAwaitingResponse, setIsAwaitingResponse] = useState(false)
   const [isLastCluster, setIsLastCluster] = useState(false)
   
+  const [nextCluster, setNextCluster] = useState<WordCluster | null>(null)
+  
   const { toast } = useToast()
 
   // Fetch initial clusters on component mount
   useEffect(() => {
-    fetchInitialClusters()
-  }, [])
+    const fetchInitialAndNextClusters = async () => {
+      await fetchInitialClusters(); // Fetch the first cluster
+      const secondCluster = await fetchNextCluster(); // Fetch the second cluster in the background
+      setNextCluster(secondCluster); // Store the second cluster
+    };
+
+    fetchInitialAndNextClusters();
+  }, []);
 
   // Update progress when current index changes
   useEffect(() => {
@@ -65,45 +74,41 @@ export default function ChunkingPage() {
   const fetchInitialClusters = async () => {
     setIsLoading(true) // Start loading
     try {
-      // Create an array of demo topics to fetch clusters for
-      const demoTopics = ["Plants", "Science", "Business", "Ocean", "Seasons", "Sports", "Animals", "Music"]
+      // Fetch a single random topic and category
+      const demoTopics = [
+        "Architecture", "Technology", "Cuisine", "Art", "Literature", "Travel", 
+        "Weather", "Space", "Medical", "Fashion", "Film", "Emotions", 
+        "Geography", "History", "Mathematics", "Transportation", 
+        "Photography", "Psychology", "Mythology", "Theatre", "Economics", 
+        "Gardening"
+      ]
       const categories: ("thematic" | "synonym" | "antonym" | "contextual")[] = [
         "thematic", "synonym", "antonym", "contextual"
       ]
       
-      // Shuffle the demoTopics and categories arrays
-      const shuffledTopics = demoTopics.sort(() => Math.random() - 0.5)
-      const shuffledCategories = categories.sort(() => Math.random() - 0.5)
-
-      // Fetch clusters for each topic one by one
-      for (let index = 0; index < shuffledTopics.length; index++) {
-        const topic = shuffledTopics[index]
-        const category = shuffledCategories[index % shuffledCategories.length]
-        
-        const response = await fetch("/api/chunking", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            topic,
-            category,
-            wordsCount: 7
-          }),
-        })
-        
-        if (!response.ok) throw new Error("Failed to fetch cluster")
-        
-        const data = await response.json()
-        
-        // Add the new cluster to the list
-        setWordClusters(prevClusters => [...prevClusters, data.cluster])
-        
-        // Stop loading after the first cluster is fetched
-        if (wordClusters.length === 0) {
-          setIsLoading(false) // Stop loading after the first cluster is added
-        }
-      }
+      const topic = demoTopics[Math.floor(Math.random() * demoTopics.length)]
+      const category = categories[Math.floor(Math.random() * categories.length)]
+      
+      const response = await fetch("/api/chunking", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          topic,
+          category,
+          wordsCount: 7
+        }),
+      })
+      
+      if (!response.ok) throw new Error("Failed to fetch cluster")
+      
+      const data = await response.json()
+      
+      // Add the new cluster to the list
+      setWordClusters([data.cluster]) // Set the first cluster directly
+      
+      setIsLoading(false) // Stop loading after the first cluster is added
     } catch (error) {
       console.error("Error fetching initial clusters:", error)
       toast({
@@ -111,26 +116,54 @@ export default function ChunkingPage() {
         description: "Could not fetch word clusters from the server. Please try again later.",
         variant: "destructive",
       })
-    } finally {
-      // Ensure loading is stopped if no clusters were fetched
-      if (wordClusters.length === 0) {
-        setIsLoading(false)
-      }
     }
   }
+
+  // Fetch the next cluster in the background
+  const fetchNextCluster = async () => {
+    const demoTopics = [
+      "Architecture", "Technology", "Cuisine", "Art", "Literature", "Travel", 
+      "Weather", "Space", "Medical", "Fashion", "Film", "Emotions", 
+      "Geography", "History", "Mathematics", "Transportation", 
+      "Photography", "Psychology", "Mythology", "Theatre", "Economics", 
+      "Gardening"
+    ]
+    const categories: ("thematic" | "synonym" | "antonym" | "contextual")[] = [
+      "thematic", "synonym", "antonym", "contextual"
+    ];
+
+    const topic = demoTopics[Math.floor(Math.random() * demoTopics.length)];
+    const category = categories[Math.floor(Math.random() * categories.length)];
+
+    const response = await fetch("/api/chunking", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        topic,
+        category,
+        wordsCount: 7
+      }),
+    });
+
+    if (!response.ok) throw new Error("Failed to fetch cluster");
+
+    const data = await response.json();
+    return data.cluster;
+  };
 
   const initializeSortingExercise = () => {
     if (wordClusters.length === 0) return
     
     const currentCluster = wordClusters[currentClusterIndex]
-    const otherClusters = wordClusters.filter((_, index) => index !== currentClusterIndex)
-    const randomCluster = otherClusters[Math.floor(Math.random() * otherClusters.length)]
-
-    // Mix words from current cluster and another random cluster
-    const mixedWords = [...currentCluster.words, ...randomCluster.words.slice(0, 3)]
+    
+    // Use randomWords from the current cluster instead of mixing with other clusters
+    const mixedWords = [...currentCluster.words, ...currentCluster.randomWords.slice(0, 5)]
+    
     // Shuffle the mixed words
     const shuffledWords = mixedWords.sort(() => Math.random() - 0.5)
-
+  
     setAvailableWords(shuffledWords)
     setUserSortedWords([])
     setIsCorrect(null)
@@ -230,21 +263,32 @@ export default function ChunkingPage() {
     }
   }
 
+  // Handle fetching the next cluster
   const handleNext = async () => {
     if (currentClusterIndex < wordClusters.length - 1) {
-      setIsAwaitingResponse(true)
-      setCurrentClusterIndex(currentClusterIndex + 1)
-      setMode("learn")
-      setIsAwaitingResponse(false)
+      setCurrentClusterIndex(currentClusterIndex + 1);
     } else {
-      setIsLastCluster(true)
-      toast({
-        title: "Exercise complete!",
-        description: "You've completed all word chunking exercises.",
-      })
-      // Reset for a new session
-      setCurrentClusterIndex(0)
-      setMode("learn")
+      // Show the next cluster that was fetched in the background
+      if (nextCluster) {
+        setWordClusters(prevClusters => [...prevClusters, nextCluster]);
+        setCurrentClusterIndex(wordClusters.length); // Move to the new cluster
+        setNextCluster(null); // Clear the next cluster after using it
+        // Fetch the next cluster in the background
+        const newNextCluster = await fetchNextCluster();
+        setNextCluster(newNextCluster); // Store the new next cluster
+      } else {
+        // If no next cluster is available, fetch a new one
+        setIsAwaitingResponse(true);
+        try {
+          const newCluster = await fetchNextCluster();
+          setWordClusters(prevClusters => [...prevClusters, newCluster]);
+          setCurrentClusterIndex(wordClusters.length); // Move to the new cluster
+        } catch (error) {
+          console.error("Error fetching next cluster:", error);
+        } finally {
+          setIsAwaitingResponse(false);
+        }
+      }
     }
   }
 
@@ -459,8 +503,17 @@ console.log('currentCluster', currentCluster);
               Practice Sorting
             </Button>
             <Button onClick={handleNext} disabled={isAwaitingResponse}>
-              {isLastCluster ? "Next Cluster" : "Next Cluster"}
-              <ArrowRight className="ml-2 h-4 w-4" />
+              {isAwaitingResponse ? (
+                <>
+                  {/* <Loader2 className="mr-2 h-4 w-4 animate-spin" /> */}
+                  Loading...
+                </>
+              ) : (
+                <>
+                  Next Cluster
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </>
+              )}
             </Button>
           </CardFooter>
         </Card>
@@ -522,7 +575,7 @@ console.log('currentCluster', currentCluster);
             {isCorrect === false && (
               <div className="flex items-center gap-2 text-red-600">
                 <X className="h-5 w-5" />
-                <span>Not quite right. Some words are misplaced or missing.</span>
+                <span>Not quite right. Some words are misplaced.</span>
               </div>
             )}
           </CardContent>
@@ -557,3 +610,4 @@ console.log('currentCluster', currentCluster);
     </div>
   )
 }
+
