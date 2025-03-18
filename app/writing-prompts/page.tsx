@@ -667,10 +667,10 @@ export default function WritingPromptsPage() {
                 </div>
 
                 <div className="flex justify-end">
-                  <Button onClick={() => setIsSubmitted(false)}>
+                  {/* <Button onClick={() => setIsSubmitted(false)}>
                     Revise Response
                     <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
+                  </Button> */}
                 </div>
               </TabsContent>
             </Tabs>
