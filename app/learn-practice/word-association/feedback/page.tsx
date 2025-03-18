@@ -21,6 +21,8 @@ const WordAssociationFeedback = () => {
   useEffect(() => {
     const processFeedback = async () => {
       try {
+        setLoading(true);
+        
         // First check if we already have results
         const storedResults = localStorage.getItem('wordAssociationResults')
         
@@ -53,7 +55,7 @@ const WordAssociationFeedback = () => {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ exercises }),
-        })
+        });
         
         if (!response.ok) {
           throw new Error('Failed to evaluate word association exercises')
@@ -61,13 +63,13 @@ const WordAssociationFeedback = () => {
         
         const result = await response.json()
         
-        // Store the results and update state
+        // Update state with results
         setFeedbackData(result)
         
-        // Store in localStorage in case user refreshes the page
+        // Store in localStorage temporarily in case user refreshes the page
         localStorage.setItem('wordAssociationResults', JSON.stringify(result))
         
-        // Clean up the exercises
+        // Clean up the exercises to prevent reprocessing
         localStorage.removeItem('wordAssociationExercises')
         
       } catch (error) {
@@ -84,7 +86,30 @@ const WordAssociationFeedback = () => {
     }
     
     processFeedback()
+    
+    // Cleanup function to ensure we don't have stale data
+    return () => {
+      // Set a timeout to remove results data when navigating away
+      const timeout = setTimeout(() => {
+        localStorage.removeItem('wordAssociationResults');
+      }, 500);
+      
+      return () => clearTimeout(timeout);
+    }
   }, [toast])
+
+  // Clear all data when returning to practice or practicing again
+  const handleReturnToPractice = () => {
+    localStorage.removeItem('wordAssociationResults');
+    localStorage.removeItem('wordAssociationExercises');
+    router.push("/learn-practice");
+  }
+
+  const handlePracticeAgain = () => {
+    localStorage.removeItem('wordAssociationResults');
+    localStorage.removeItem('wordAssociationExercises');
+    router.push("/learn-practice/word-association");
+  }
 
   if (loading) {
     return (
@@ -144,7 +169,7 @@ const WordAssociationFeedback = () => {
             </div>
             <Button 
               size="lg"
-              onClick={() => router.push("/learn-practice/word-association")}
+              onClick={handlePracticeAgain}
               className="bg-primary hover:bg-primary/90 text-primary-foreground"
             >
               Try Again
@@ -184,7 +209,7 @@ const WordAssociationFeedback = () => {
             </div>
             <Button 
               size="lg"
-              onClick={() => router.push("/learn-practice/word-association")}
+              onClick={handlePracticeAgain}
               className="bg-primary hover:bg-primary/90 text-primary-foreground"
             >
               Start Practicing
@@ -273,35 +298,23 @@ const WordAssociationFeedback = () => {
 
           {/* Strengths and Areas for Improvement */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* <div className="border rounded-lg p-5 shadow-sm">
-              <h3 className="font-medium mb-3 flex items-center gap-2 text-green-600 dark:text-green-400">
-                <Award className="h-5 w-5" />
-                Your Strengths
-              </h3>
-              <ul className="space-y-2">
-                {strengths.map((strength, index) => (
-                  <li key={index} className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-green-500 dark:text-green-400 mt-0.5" />
-                    <span>{strength}</span>
-                  </li>
-                ))}
-              </ul>
-            </div> */}
-            
-            {/* <div className="border rounded-lg p-5 shadow-sm">
-              <h3 className="font-medium mb-3 flex items-center gap-2 text-amber-600 dark:text-amber-400">
-                <BookOpen className="h-5 w-5" />
-                Areas for Improvement
-              </h3>
-              <ul className="space-y-2">
-                {areasForImprovement.map((area, index) => (
-                  <li key={index} className="flex items-start gap-2">
-                    <span className="text-amber-500 dark:text-amber-400">•</span>
-                    <span>{area}</span>
-                  </li>
-                ))}
-              </ul>
-            </div> */}
+            {/* Removed strengths section */}
+            {/* {strengths && strengths.length > 0 && (
+              <div className="border rounded-lg p-5 shadow-sm">
+                <h3 className="font-medium mb-3 flex items-center gap-2 text-green-600 dark:text-green-400">
+                  <Award className="h-5 w-5" />
+                  Your Strengths
+                </h3>
+                <ul className="space-y-2">
+                  {strengths.map((strength, index) => (
+                    <li key={index} className="flex items-start gap-2">
+                      <Check className="h-5 w-5 text-green-500 dark:text-green-400 mt-0.5" />
+                      <span>{strength}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )} */}
           </div>
 
           {/* Individual Exercise Feedback */}
@@ -414,14 +427,14 @@ const WordAssociationFeedback = () => {
         <CardFooter className="py-5 px-6 border-t border-border bg-card/60 flex flex-col sm:flex-row gap-3 justify-between">
           <Button 
             variant="outline" 
-            onClick={() => router.push("/learn-practice")}
+            onClick={handleReturnToPractice}
             className="gap-2"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Practice
           </Button>
           <Button 
-            onClick={() => router.push("/learn-practice/word-association")}
+            onClick={handlePracticeAgain}
             className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
           >
             <Sparkles className="h-4 w-4" />

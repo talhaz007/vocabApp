@@ -37,6 +37,7 @@ export default function WordAssociationPage() {
   const [selectedDifficulty, setSelectedDifficulty] = useState<"easy" | "medium" | "hard" | null>(null)
   const { toast } = useToast()
   const isInitialized = useRef(false)
+  const [isChecking, setIsChecking] = useState(false)
 
   const [wordSetProgress, setWordSetProgress] = useState(() => 
     Array(5).fill({
@@ -50,6 +51,12 @@ export default function WordAssociationPage() {
       alternativeSentences: [],
     })
   );
+
+  // Clear localStorage on component mount to prevent showing old data
+  useEffect(() => {
+    // Clear any previous feedback data to prevent showing old results
+    localStorage.removeItem('wordAssociationResults');
+  }, []);
 
   // Load initial word sets
   useEffect(() => {
@@ -143,12 +150,14 @@ export default function WordAssociationPage() {
   }
 
   const handleSubmit = async () => {
+    setIsChecking(true)
     if (selectedWords.length < 2) {
       toast({
         title: "Not enough words selected",
         description: "Please select at least 2 words to create a sentence.",
         variant: "destructive",
       })
+      setIsChecking(false)
       return
     }
 
@@ -158,6 +167,7 @@ export default function WordAssociationPage() {
         description: "Please write a sentence using your selected words.",
         variant: "destructive",
       })
+      setIsChecking(false)
       return
     }
 
@@ -194,6 +204,8 @@ export default function WordAssociationPage() {
       console.error("Error evaluating sentence:", error)
       setFeedbackType("error")
       setFeedback("We couldn't evaluate your sentence. Please try again.")
+    } finally {
+      setIsChecking(false)
     }
   }
 
@@ -301,10 +313,13 @@ export default function WordAssociationPage() {
       return;
     }
     
+    // IMPORTANT: Clear any previous results first to prevent showing old data
+    localStorage.removeItem('wordAssociationResults');
+    
     // Store the exercises in localStorage to be processed by the feedback page
     localStorage.setItem('wordAssociationExercises', JSON.stringify(exercises));
     
-    // Navigate to feedback page immediately
+    // Navigate to feedback page
     router.push('/learn-practice/word-association/feedback');
   }
 
@@ -487,7 +502,10 @@ export default function WordAssociationPage() {
             
             {!feedbackType && (
               <Button onClick={handleSubmit} disabled={selectedWords.length < 2 || !userSentence.trim()}>
-                Check Sentence
+                <span className="flex items-center">
+                  {isChecking ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  <span style={{ minWidth: '100px' }}>{isChecking ? "Checking..." : "Check Sentence"}</span>
+                </span>
               </Button>
             )}
           </div>
