@@ -54,6 +54,7 @@ export async function POST(request: NextRequest) {
         if (item.word) exerciseDetails += ` - Word: "${item.word}"`;
         if (item.mnemonic) exerciseDetails += ` - Mnemonic: "${item.mnemonic}"`;
         if (item.definition) exerciseDetails += ` - Definition: "${item.definition}"`;
+        if (item.userAnswer) exerciseDetails += ` - User's Answer: "${item.userAnswer}"`;
         if (item.feedback) exerciseDetails += ` - Previous Feedback: "${item.feedback}"`;
         if (item.isCorrect !== undefined) exerciseDetails += ` - Was Correct: ${item.isCorrect}`;
         

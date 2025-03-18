@@ -307,7 +307,54 @@ export default function SoundMnemonicsPage() {
   }
 
   const handleFinish = () => {
-    router.push("/memory")
+    // Save the current word's state before finishing
+    const updatedProgress = [...wordProgress];
+    updatedProgress[currentIndex] = {
+      userAnswer,
+      isCorrect,
+      showHint,
+      mode
+    };
+    
+    // Format the exercises for the feedback API, only including attempted exercises
+    const savedExercises = soundMnemonics
+      .map((mnemonic, index) => {
+        const progress = updatedProgress[index];
+        
+        // Only include exercises where the user has provided an answer
+        if (!progress.userAnswer || progress.userAnswer.trim() === "") {
+          return null;
+        }
+        
+        return {
+          exerciseType: "soundMnemonic",
+          word: mnemonic.word,
+          mnemonic: mnemonic.mnemonic,
+          definition: mnemonic.definition,
+          userAnswer: progress.userAnswer || "",
+          isCorrect: progress.isCorrect || false,
+          feedback: progress.isCorrect 
+            ? "User correctly recalled the sound mnemonic" 
+            : "User had difficulty recalling the sound mnemonic"
+        };
+      })
+      .filter(exercise => exercise !== null); // Remove null entries (unattempted exercises)
+    
+    // Only proceed if there are attempted exercises
+    if (savedExercises.length === 0) {
+      toast({
+        title: "No completed exercises",
+        description: "Please attempt at least one exercise before finishing.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Store the exercises in localStorage for the feedback page to process
+    localStorage.setItem('savedMemoryExercises', JSON.stringify(savedExercises));
+    
+    // Navigate to the feedback page
+    router.push('/memory/feedback');
   }
 
   const currentMnemonic = soundMnemonics[currentIndex]
