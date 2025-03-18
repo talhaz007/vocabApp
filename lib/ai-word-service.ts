@@ -17,6 +17,7 @@ export interface WordSet {
   category: string;
   difficulty: "easy" | "medium" | "hard";
   possibleSentences: string[];
+  question?: string;
 }
 
 export interface SentenceEvaluation {
@@ -82,8 +83,9 @@ export async function generateRandomWord(
  */
 export async function generateWordSet(
   options?: {
-    difficulty?: "easy" | "medium" | "hard"
-    category?: string
+    difficulty?: "easy" | "medium" | "hard";
+    category?: string;
+    includeQuestion?: boolean;
   }
 ): Promise<WordSet> {
   try {
@@ -95,28 +97,31 @@ export async function generateWordSet(
       body: JSON.stringify({
         difficulty: options?.difficulty,
         category: options?.category,
+        includeQuestion: options?.includeQuestion || false,
       }),
-    })
+    });
     
     if (!response.ok) {
-      throw new Error(`API error: ${response.status}`)
+      throw new Error(`API error: ${response.status}`);
     }
     
-    const data = await response.json()
-    return data as WordSet
+    const data = await response.json();
+    return data as WordSet;
   } catch (error) {
-    console.error("Error generating word set:", error)
+    console.error("Error generating word set:", error);
     // Return a fallback word set if generation fails
     return {
-      words: ["Eloquent", "Persuasive", "Debate", "Audience"],
-      category: "Communication",
+      words: ["Innovation", "Technology", "Progress", "Development", "Future"],
+      category: "Technology and Progress",
       difficulty: "medium",
       possibleSentences: [
-        "The eloquent speaker was persuasive in the debate, captivating the audience.",
-        "During the debate, her eloquent style made her persuasive to the audience.",
-        "The persuasive argument was delivered in an eloquent manner to the audience."
-      ]
-    }
+        "Technological innovation drives progress in many fields.",
+        "The future of development depends on sustainable technology.",
+        "Progress in technology has accelerated in recent decades."
+      ],
+      question: options?.includeQuestion ? 
+        "How might technological innovation shape our future?" : undefined
+    };
   }
 }
 

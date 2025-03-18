@@ -13,16 +13,19 @@ const WordSetSchema = z.object({
   category: z.string(),
   difficulty: z.enum(["easy", "medium", "hard"]),
   possibleSentences: z.array(z.string()),
+  question: z.string().optional(),
 });
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { difficulty, category } = body;
+    const { difficulty, category, includeQuestion } = body;
     
     const prompt = `
-      Generate a set of 3 related words ${difficulty ? `with ${difficulty} difficulty` : ""} 
+      Generate a set of 5 related vocabulary words ${difficulty ? `with ${difficulty} difficulty` : ""} 
       ${category ? `from the category "${category}"` : ""}.
+      Include the category name, and 3 example sentences using these words.
+      ${includeQuestion ? "Also generate a thought-provoking question that would require using these words in the response." : ""}
     `;
 
     const completion = await openai.beta.chat.completions.parse({
@@ -31,7 +34,7 @@ export async function POST(request: NextRequest) {
       messages: [
         { 
           role: "system", 
-          content: "You are a vocabulary expert. Generate sets of related words that can be used together in sentences."
+          content: "You are a language expert. Generate sets of related vocabulary words with example sentences."
         },
         { 
           role: "user", 
@@ -47,14 +50,16 @@ export async function POST(request: NextRequest) {
     console.error("Error generating word set:", error);
     // Return a fallback word set if generation fails
     return NextResponse.json({
-      words: ["Eloquent", "Persuasive", "Debate", "Audience"],
-      category: "Communication",
+      words: ["Innovation", "Technology", "Progress", "Development", "Future"],
+      category: "Technology and Progress",
       difficulty: "medium",
       possibleSentences: [
-        "The eloquent speaker was persuasive in the debate, captivating the audience.",
-        "During the debate, her eloquent style made her persuasive to the audience.",
-        "The persuasive argument was delivered in an eloquent manner to the audience."
-      ]
+        "Technological innovation drives progress in many fields.",
+        "The future of development depends on sustainable technology.",
+        "Progress in technology has accelerated in recent decades."
+      ],
+      question: includeQuestion ? 
+        "How might technological innovation shape our future?" : undefined
     }, { status: 500 });
   }
 } 

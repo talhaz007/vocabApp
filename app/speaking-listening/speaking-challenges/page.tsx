@@ -1,66 +1,26 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { Mic, Square, Image, MessageSquare, Check, X, ArrowRight } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { Mic, Square, MessageSquare, Check, X, ArrowRight, Image as ImageIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { useToast } from "@/hooks/use-toast"
 import { Breadcrumb } from "@/components/breadcrumb"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { generateWordSet, saveLearnedWord } from "@/lib/ai-word-service"
 
 interface SpeakingChallenge {
   id: string
-  type: "image" | "question"
-  content: string
-  imageUrl?: string
+  question: string
   targetWords: string[]
   difficulty: "easy" | "medium" | "hard"
+  category: string
 }
 
-// Sample speaking challenges
-const speakingChallenges: SpeakingChallenge[] = [
-  {
-    id: "1",
-    type: "image",
-    content: "Describe this cityscape using at least 3 of the target words.",
-    imageUrl: "/placeholder.svg?height=300&width=500",
-    targetWords: ["Bustling", "Skyline", "Urban", "Towering", "Vibrant"],
-    difficulty: "medium",
-  },
-  {
-    id: "2",
-    type: "question",
-    content: "What are the benefits of learning a foreign language?",
-    targetWords: ["Cognitive", "Cultural", "Perspective", "Enhance", "Opportunity"],
-    difficulty: "medium",
-  },
-  {
-    id: "3",
-    type: "image",
-    content: "Describe this natural landscape and how it makes you feel.",
-    imageUrl: "/placeholder.svg?height=300&width=500",
-    targetWords: ["Serene", "Majestic", "Breathtaking", "Tranquil", "Awe"],
-    difficulty: "easy",
-  },
-  {
-    id: "4",
-    type: "question",
-    content: "How might technology change education in the next decade?",
-    targetWords: ["Innovation", "Transform", "Implement", "Virtual", "Accessible"],
-    difficulty: "hard",
-  },
-  {
-    id: "5",
-    type: "image",
-    content: "Describe what might be happening in this social gathering.",
-    imageUrl: "/placeholder.svg?height=300&width=500",
-    targetWords: ["Interaction", "Convivial", "Animated", "Engaging", "Sociable"],
-    difficulty: "medium",
-  },
-]
-
 export default function SpeakingChallengesPage() {
+  const router = useRouter()
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isRecording, setIsRecording] = useState(false)
   const [audioURL, setAudioURL] = useState<string | null>(null)
@@ -68,16 +28,98 @@ export default function SpeakingChallengesPage() {
   const [detectedWords, setDetectedWords] = useState<string[]>([])
   const [progress, setProgress] = useState(0)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [selectedDifficulty, setSelectedDifficulty] = useState<"easy" | "medium" | "hard" | null>(null)
+  const [speakingChallenges, setSpeakingChallenges] = useState<SpeakingChallenge[]>([])
+  const isInitialized = useRef(false)
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const { toast } = useToast()
 
+  // Add a state for feedback type
+  const [feedbackType, setFeedbackType] = useState<"success" | "error" | null>(null)
+
+  // Load initial speaking challenges
+  useEffect(() => {
+    async function loadSpeakingChallenges() {
+      setIsLoading(true)
+      try {
+        const newChallenges: SpeakingChallenge[] = []
+        
+        // Generate 5 challenges sequentially
+        for (let i = 0; i < 5; i++) {
+          const wordSet = await generateWordSet({ 
+            difficulty: selectedDifficulty || undefined,
+            includeQuestion: true // Request a question with the word set
+          })
+          
+          const challenge: SpeakingChallenge = {
+            id: `challenge-${i}`,
+            question: wordSet.question || `Discuss the topic of ${wordSet.category} using the target words.`,
+            targetWords: wordSet.words,
+            difficulty: wordSet.difficulty,
+            category: wordSet.category
+          }
+          newChallenges.push(challenge)
+          
+          // Show the first challenge immediately and stop loading indicator
+          if (i === 0) {
+            setSpeakingChallenges([challenge])
+            setIsLoading(false)
+          } else {
+            // Update with all challenges generated so far
+            setSpeakingChallenges([...newChallenges])
+          }
+        }
+        
+        toast({
+          title: "Speaking challenges loaded",
+          description: "Your speaking exercises are ready",
+        })
+      } catch (error) {
+        console.error("Error loading speaking challenges:", error)
+        toast({
+          title: "Error loading challenges",
+          description: "Please try again later",
+          variant: "destructive",
+        })
+        setIsLoading(false)
+        // Fall back to sample challenges if loading fails
+        setSpeakingChallenges([
+          {
+            id: "1",
+            question: "What are the benefits of learning a foreign language?",
+            targetWords: ["Cognitive", "Cultural", "Perspective", "Enhance", "Opportunity"],
+            difficulty: "medium",
+            category: "Language Learning"
+          },
+          // Add more fallback challenges as needed
+        ])
+      }
+    }
+
+    if (!isInitialized.current) {
+      isInitialized.current = true
+      loadSpeakingChallenges()
+    }
+  }, [selectedDifficulty, toast])
+
   useEffect(() => {
     // Update progress when current index changes
     setProgress(((currentIndex + 1) / speakingChallenges.length) * 100)
-  }, [currentIndex])
+  }, [currentIndex, speakingChallenges.length])
+
+  const handleChangeDifficulty = (difficulty: "easy" | "medium" | "hard" | null) => {
+    setSelectedDifficulty(difficulty)
+    // Reset and reload challenges with new difficulty
+    setCurrentIndex(0)
+    setAudioURL(null)
+    setFeedback(null)
+    setDetectedWords([])
+    isInitialized.current = false
+  }
 
   const startRecording = async () => {
     try {
@@ -148,42 +190,77 @@ export default function SpeakingChallengesPage() {
 
     setIsProcessing(true)
     try {
-      // In a real app, this would send the audio to a speech-to-text service
-      // and then analyze the text for the target words
-
-      // Simulate processing delay
-      await new Promise((resolve) => setTimeout(resolve, 2000))
-
+      // Convert the audio URL to a Blob
+      const response = await fetch(audioURL);
+      const audioBlob = await response.blob();
+      
+      // Create a FormData object to send the audio file
+      const formData = new FormData();
+      formData.append('audio', audioBlob);
       const currentChallenge = speakingChallenges[currentIndex]
-
-      // Simulate detected words (randomly select 2-4 target words)
-      const shuffled = [...currentChallenge.targetWords].sort(() => 0.5 - Math.random())
-      const detected = shuffled.slice(0, Math.floor(Math.random() * 3) + 2)
-      setDetectedWords(detected)
-
-      // Generate feedback based on detected words
-      if (detected.length >= 3) {
-        setFeedback(
-          "Excellent job! You used several target vocabulary words effectively. Your response was clear and well-structured.",
-        )
-      } else if (detected.length >= 1) {
-        setFeedback(
-          "Good effort! You used some target vocabulary. Try to incorporate more of the suggested words in your next response.",
-        )
-      } else {
-        setFeedback(
-          "You didn't use any of the target vocabulary words. Try to practice incorporating these words into your speech.",
-        )
+      formData.append('targetWords', JSON.stringify(currentChallenge.targetWords));
+      formData.append('question', currentChallenge.question);
+      
+      // Send the audio to our API endpoint
+      const apiResponse = await fetch('/api/speaking/evaluate-response', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!apiResponse.ok) {
+        throw new Error(`API error: ${apiResponse.status}`);
+      }
+      
+      const result = await apiResponse.json();
+      
+      // Update the UI with the evaluation results
+      setDetectedWords(result.detectedWords);
+      setFeedback(result.feedback);
+      setFeedbackType(result.isValid ? "success" : "error");
+      
+      // Save successfully used words to Supabase
+      if (result.isValid && result.detectedWords.length > 1) {
+        try {
+          // Save each detected word to the learned_words table
+          for (const word of result.detectedWords) {
+            saveLearnedWord(
+              {
+                word: word,
+                definition: "Used in speaking challenge",
+                mnemonic: "",
+                difficulty: currentChallenge.difficulty,
+                hints: [],
+                examples: [result.transcription], // Use the transcription as an example
+                synonyms: [],
+                antonyms: []
+              },
+              {
+                mastery: result.quality === "excellent" ? 90 : 70, // Higher mastery for excellent quality
+                lastPracticed: new Date(),
+                notes: `Used in speaking challenge: "${currentChallenge.question}"`
+              }
+            )
+          }
+          
+          toast({
+            title: `${result.detectedWords.length} words saved to your vocabulary`,
+            description: "Your progress has been recorded",
+          })
+        } catch (error) {
+          console.error("Error saving words to vocabulary:", error)
+        }
       }
     } catch (error) {
+      console.error("Error analyzing response:", error);
       toast({
         title: "Error analyzing response",
         description: "Please try again later",
         variant: "destructive",
-      })
-      setFeedback("Unable to analyze response at this time.")
+      });
+      setFeedback("Unable to analyze response at this time.");
+      setFeedbackType("error");
     } finally {
-      setIsProcessing(false)
+      setIsProcessing(false);
     }
   }
 
@@ -192,6 +269,7 @@ export default function SpeakingChallengesPage() {
       setCurrentIndex(currentIndex + 1)
       setAudioURL(null)
       setFeedback(null)
+      setFeedbackType(null)
       setDetectedWords([])
       setIsProcessing(false)
     } else {
@@ -200,6 +278,37 @@ export default function SpeakingChallengesPage() {
         description: "You've completed all speaking challenges.",
       })
     }
+  }
+
+  const handlePreviousWord = () => {
+    if (currentIndex > 0) {
+      setCurrentIndex(currentIndex - 1)
+      setAudioURL(null)
+      setFeedback(null)
+      setFeedbackType(null)
+      setDetectedWords([])
+      setIsProcessing(false)
+    }
+  }
+
+  const handleFinish = () => {
+    router.push("/speaking-listening")
+  }
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="container max-w-4xl py-8 space-y-6">
+        <Breadcrumb items={[
+          { label: "Speaking & Listening", href: "/speaking-listening", active: false },
+          { label: "Speaking Challenges", href: "/speaking-listening/speaking-challenges", active: true }
+        ]} />
+        <div className="flex flex-col items-center justify-center h-96">
+          <div className="animate-spin h-12 w-12 border-4 border-primary border-t-transparent rounded-full mb-4"></div>
+          <p className="text-lg text-muted-foreground">Generating speaking challenges...</p>
+        </div>
+      </div>
+    )
   }
 
   const currentChallenge = speakingChallenges[currentIndex]
@@ -213,11 +322,45 @@ export default function SpeakingChallengesPage() {
 
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Speaking Challenges</h1>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-4">
           <span className="text-sm text-muted-foreground">
-            {currentIndex + 1} of {speakingChallenges.length}
+            {currentIndex + 1} of 5
           </span>
-          <Progress value={progress} className="w-32" />
+          {/* <Progress value={progress} className="w-32" /> */}
+          
+          {/* Add difficulty selector */}
+          <div className="flex gap-2">
+            <Button 
+              size="sm" 
+              variant={selectedDifficulty === "easy" ? "default" : "outline"}
+              onClick={() => handleChangeDifficulty("easy")}
+            >
+              Easy
+            </Button>
+            <Button 
+              size="sm" 
+              variant={selectedDifficulty === "medium" ? "default" : "outline"}
+              onClick={() => handleChangeDifficulty("medium")}
+            >
+              Medium
+            </Button>
+            <Button 
+              size="sm" 
+              variant={selectedDifficulty === "hard" ? "default" : "outline"}
+              onClick={() => handleChangeDifficulty("hard")}
+            >
+              Hard
+            </Button>
+            {selectedDifficulty && (
+              <Button 
+                size="sm" 
+                variant="ghost"
+                onClick={() => handleChangeDifficulty(null)}
+              >
+                Clear
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -232,25 +375,13 @@ export default function SpeakingChallengesPage() {
               <TabsTrigger value="vocabulary">Target Vocabulary</TabsTrigger>
             </TabsList>
             <TabsContent value="challenge" className="space-y-4 pt-4">
-              {currentChallenge.type === "image" && (
-                <div className="flex flex-col items-center gap-4">
-                  <div className="relative w-full aspect-video bg-muted rounded-md overflow-hidden">
-                    <img 
-                      src={currentChallenge.imageUrl || "/placeholder.svg"} 
-                      alt="Challenge image" 
-                      className="object-cover w-full h-full"
-                    />
-                  </div>
-                  <p className="text-center font-medium">{currentChallenge.content}</p>
+              <div className="bg-muted p-6 rounded-md text-center">
+                <MessageSquare className="h-8 w-8 mx-auto mb-4 text-primary" />
+                <p className="text-lg font-medium">{currentChallenge.question}</p>
+                <div className="mt-2 text-sm text-muted-foreground">
+                  Answer this question using at least 2 of the target words
                 </div>
-              )}
-              
-              {currentChallenge.type === "question" && (
-                <div className="bg-muted p-6 rounded-md text-center">
-                  <MessageSquare className="h-8 w-8 mx-auto mb-4 text-primary" />
-                  <p className="text-lg font-medium">{currentChallenge.content}</p>
-                </div>
-              )}
+              </div>
             </TabsContent>
             <TabsContent value="vocabulary" className="pt-4">
               <div className="bg-muted p-4 rounded-md">
@@ -293,7 +424,7 @@ export default function SpeakingChallengesPage() {
               <audio ref={audioRef} src={audioURL} className="hidden" />
               <div className="flex items-center gap-4">
                 <Button variant="outline" onClick={handlePlayRecording}>
-                  <Image className="mr-2 h-4 w-4" />
+                  <ImageIcon className="mr-2 h-4 w-4" />
                   Play Recording
                 </Button>
                 <Button variant="outline" onClick={handleReset}>
@@ -308,39 +439,58 @@ export default function SpeakingChallengesPage() {
           )}
 
           {feedback && (
-            <div className="bg-muted p-4 rounded-md">
-              <h3 className="font-medium mb-2">Feedback</h3>
-              <p>{feedback}</p>
-              
-              {detectedWords.length > 0 && (
-                <div className="mt-3">
-                  <p className="font-medium text-sm">Words detected in your response:</p>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {detectedWords.map((word) => (
-                      <div 
-                        key={word} 
-                        className="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200"
-                      >
-                        {word}
+            <div
+              className={`p-4 rounded-md ${
+                feedbackType === "success" ? "bg-green-50 border border-green-200" : "bg-red-50 border border-red-200"
+              }`}
+            >
+              <div className="flex items-start gap-3">
+                {feedbackType === "success" ? (
+                  <Check className="h-5 w-5 text-green-500 mt-0.5" />
+                ) : (
+                  <X className="h-5 w-5 text-red-500 mt-0.5" />
+                )}
+                <div>
+                  <h3 className={`font-medium ${feedbackType === "success" ? "text-green-800" : "text-red-800"}`}>
+                    {feedbackType === "success" ? "Well done!" : "Try again"}
+                  </h3>
+                  <p className={feedbackType === "success" ? "text-green-700" : "text-red-700"}>{feedback}</p>
+                  
+                  {detectedWords.length > 0 && (
+                    <div className="mt-3">
+                      <p className="font-medium text-sm">Words detected in your response:</p>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {detectedWords.map((word) => (
+                          <div 
+                            key={word} 
+                            className="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200"
+                          >
+                            {word}
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
           )}
         </CardContent>
         <CardFooter className="flex justify-between">
           <Button 
             variant="outline" 
-            onClick={() => setCurrentIndex(Math.max(0, currentIndex - 1))}
+            onClick={() => handlePreviousWord()}
             disabled={currentIndex === 0}
           >
             Previous Challenge
           </Button>
           
-          {feedback && (
-            <Button onClick={handleNextChallenge}>
+          { currentIndex === 4 ? (
+            <Button onClick={handleFinish}>
+              Finish <Check className="ml-2 h-4 w-4" />
+            </Button>
+          ) : (
+            <Button onClick={handleNextChallenge} disabled={currentIndex === speakingChallenges.length - 1 || isProcessing}>
               Next Challenge
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
