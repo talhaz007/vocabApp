@@ -3,6 +3,7 @@
 import type React from "react"
 
 import { useState, useEffect, useRef } from "react"
+import { useRouter } from "next/navigation"
 import { Volume2, Repeat, Check, X, ArrowRight, HelpCircle, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -22,6 +23,7 @@ interface SoundMnemonic {
 }
 
 export default function SoundMnemonicsPage() {
+  const router = useRouter()
   const [soundMnemonics, setSoundMnemonics] = useState<SoundMnemonic[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [mode, setMode] = useState<"learn" | "practice">("learn")
@@ -135,7 +137,7 @@ export default function SoundMnemonicsPage() {
   }
 
   const handleNext = () => {
-    if (currentIndex < soundMnemonics.length - 1) {
+    if (currentIndex < 4) {
       setCurrentIndex(currentIndex + 1)
       setUserAnswer("")
       setIsCorrect(null)
@@ -207,6 +209,10 @@ export default function SoundMnemonicsPage() {
     )
   }
 
+  const handleFinish = () => {
+    router.push("/memory")
+  }
+
   const currentMnemonic = soundMnemonics[currentIndex]
 
   return (
@@ -223,9 +229,9 @@ export default function SoundMnemonicsPage() {
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">
-              {currentIndex + 1} of {soundMnemonics.length}
+              {currentIndex + 1} of 5
             </span>
-            <Progress value={progress} className="w-32" />
+            {/* <Progress value={progress} className="w-32" /> */}
           </div>
           
           <div className="flex gap-2">
@@ -396,15 +402,27 @@ export default function SoundMnemonicsPage() {
         </CardContent>
         <CardFooter>
           {mode === "learn" || isCorrect === true ? (
-            <Button onClick={handleNext} className="w-full">
-              {currentIndex < soundMnemonics.length - 1 ? "Next Word" : mode === "learn" ? "Start Practice" : "Finish"}
+            <Button onClick={handleNext} disabled={currentIndex === soundMnemonics.length - 1 && currentIndex < 4} className="w-full">
+              {currentIndex < 4 ? "Next Word" : mode === "learn" ? "Start Practice" : "Finish"}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           ) : (
-            <Button variant="outline" onClick={() => setMode("learn")} className="w-full">
-              <Repeat className="mr-2 h-4 w-4" />
-              Review This Word
-            </Button>
+            <div className="flex justify-between w-full">
+              <Button variant="outline" onClick={() => setMode("learn")}>
+                <Repeat className="mr-2 h-4 w-4" />
+                Review This Word
+              </Button>
+
+              {currentIndex === 4 ?
+                <Button onClick={handleFinish}>
+                  Finish
+                </Button>
+              :
+                <Button onClick={handleNext}>
+                  Next
+                </Button>
+              }
+            </div>
           )}
         </CardFooter>
       </Card>
