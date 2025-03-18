@@ -66,10 +66,18 @@ export default function AudioLearningPage() {
       setIsLoading(true)
       try {
         const newWords: AudioWord[] = []
+        // Keep track of words we've already generated to exclude them
+        const excludedWords: string[] = []
         
         // Generate 5 words sequentially
         for (let i = 0; i < 5; i++) {
-          const word = await generateRandomWord({ difficulty: selectedDifficulty || undefined })
+          const word = await generateRandomWord({ 
+            difficulty: selectedDifficulty || undefined,
+            excludeWords: excludedWords
+          })
+          
+          // Add this word to excluded words for future generations
+          excludedWords.push(word.word)
           
           // Get the first example or create a simple one if none exists
           const example = word.examples && word.examples.length > 0 

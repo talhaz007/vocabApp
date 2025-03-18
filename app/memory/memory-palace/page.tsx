@@ -145,11 +145,19 @@ export default function MemoryPalacePage() {
     setIsLoading(true);
     try {
       const newPalaceWords: PalaceWord[] = [];
+      // Keep track of words we've already generated to exclude them
+      const excludedWords: string[] = [];
       
       // Generate 5 memory palace words sequentially
       for (let i = 0; i < 5; i++) {
         // Use the same generateRandomWord API from your flashcard code
-        const word = await generateRandomWord({ difficulty: selectedDifficulty || undefined });
+        const word = await generateRandomWord({ 
+          difficulty: selectedDifficulty || undefined,
+          excludeWords: excludedWords
+        });
+        
+        // Add this word to excluded words for future generations
+        excludedWords.push(word.word);
         
         // Convert the word to your PalaceWord format
         const palaceWord: PalaceWord = {

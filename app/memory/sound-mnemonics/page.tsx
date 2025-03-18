@@ -41,13 +41,19 @@ export default function SoundMnemonicsPage() {
       setIsLoading(true)
       try {
         const newMnemonics: SoundMnemonic[] = []
+        // Keep track of words we've already generated to exclude them
+        const excludedWords: string[] = []
         
         // Generate 5 mnemonics sequentially
         for (let i = 0; i < 5; i++) {
           const word = await generateRandomWord({ 
             difficulty: selectedDifficulty || undefined,
-            mnemonicType: "sound" // Add this flag to request sound-based single word mnemonics
+            mnemonicType: "sound", // Add this flag to request sound-based single word mnemonics
+            excludeWords: excludedWords
           })
+          
+          // Add this word to excluded words for future generations
+          excludedWords.push(word.word)
           
           // Extract just the mnemonic word from the full description
           let mnemonicWord = word.mnemonic.split(":")[0].trim()

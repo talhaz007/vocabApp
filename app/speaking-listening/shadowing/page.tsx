@@ -70,12 +70,20 @@ export default function ShadowingPage() {
       setIsLoading(true)
       try {
         const newExercises: ShadowingExercise[] = []
+        // Keep track of categories we've already generated to avoid duplicates
+        const usedCategories: string[] = []
         
         // Generate 5 exercises sequentially
         for (let i = 0; i < 5; i++) {
           const exercise = await generateShadowingExercise({ 
-            difficulty: selectedDifficulty || undefined 
+            difficulty: selectedDifficulty || undefined,
+            category: usedCategories.length > 0 ? undefined : undefined // Don't specify category to get variety
           })
+          
+          // Add this category to used categories for future generations
+          if (exercise.category) {
+            usedCategories.push(exercise.category)
+          }
           
           const shadowingExercise: ShadowingExercise = {
             id: `exercise-${i}`,

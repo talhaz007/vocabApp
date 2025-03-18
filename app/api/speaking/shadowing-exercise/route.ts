@@ -20,14 +20,14 @@ const ShadowingExerciseSchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { difficulty, category } = body;
+    const { difficulty, category, excludeCategories } = body;
     
     const prompt = `
       Generate a shadowing exercise for language learners.
       
       Create a natural, conversational sentence or short paragraph ${difficulty ? `with ${difficulty} difficulty` : ""} 
       ${category ? `related to the topic of "${category}"` : ""}.
-      
+      ${excludeCategories ? `Do NOT generate a shadowing exercise related to the following categories: ${excludeCategories.join(', ')}` : ""}
       The text should be suitable for pronunciation practice and shadowing exercises.
       
       Include:

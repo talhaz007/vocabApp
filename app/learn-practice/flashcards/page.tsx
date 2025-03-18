@@ -39,9 +39,19 @@ export default function FlashcardsPage() {
           nextReview: Date | null
         })[] = [];
         
+        // Keep track of words we've already generated to exclude them
+        const excludedWords: string[] = [];
+        
         // Generate 5 flashcards sequentially
         for (let i = 0; i < 5; i++) {
-          const word = await generateRandomWord({ difficulty: selectedDifficulty || undefined });
+          const word = await generateRandomWord({ 
+            difficulty: selectedDifficulty || undefined,
+            excludeWords: excludedWords
+          });
+          
+          // Add this word to excluded words for future generations
+          excludedWords.push(word.word);
+          
           const flashcard = {
             ...word,
             id: `generated-${i}`,

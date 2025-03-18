@@ -34,6 +34,7 @@ export async function generateRandomWord(
     difficulty?: "easy" | "medium" | "hard"
     category?: string
     mnemonicType?: "sound" | "visual" | "standard"
+    excludeWords?: string[]
   }
 ): Promise<WordDetails> {
   try {
@@ -46,6 +47,7 @@ export async function generateRandomWord(
         difficulty: options?.difficulty,
         category: options?.category,
         mnemonicType: options?.mnemonicType,
+        excludeWords: options?.excludeWords,
       }),
     })
     
@@ -88,6 +90,7 @@ export async function generateWordSet(
     difficulty?: "easy" | "medium" | "hard";
     category?: string;
     includeQuestion?: boolean;
+    excludeCategories?: string[];
   }
 ): Promise<WordSet> {
   try {
@@ -100,6 +103,7 @@ export async function generateWordSet(
         difficulty: options?.difficulty,
         category: options?.category,
         includeQuestion: options?.includeQuestion || false,
+        excludeCategories: options?.excludeCategories,
       }),
     });
     
@@ -276,6 +280,7 @@ export async function checkPronunciation(
     options?: {
       difficulty?: "easy" | "medium" | "hard";
       category?: string;
+      excludeCategories?: string[];
     }
   ): Promise<{
     text: string;
@@ -294,6 +299,7 @@ export async function checkPronunciation(
         body: JSON.stringify({
           difficulty: options?.difficulty,
           category: options?.category,
+          excludeCategories: options?.excludeCategories,
         }),
       });
       

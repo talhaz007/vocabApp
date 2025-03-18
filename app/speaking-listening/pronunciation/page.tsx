@@ -92,10 +92,19 @@ export default function PronunciationPage() {
       setIsLoading(true)
       try {
         const newWords: PronunciationWord[] = []
+        // Keep track of words we've already generated to exclude them
+        const excludedWords: string[] = []
         
         // Generate 5 words sequentially
         for (let i = 0; i < 5; i++) {
-          const word = await generateRandomWord({ difficulty: selectedDifficulty || undefined })
+          const word = await generateRandomWord({ 
+            difficulty: selectedDifficulty || undefined,
+            excludeWords: excludedWords
+          })
+          
+          // Add this word to excluded words for future generations
+          excludedWords.push(word.word)
+          
           const pronunciationWord: PronunciationWord = {
             id: `word-${i}`,
             word: word.word,

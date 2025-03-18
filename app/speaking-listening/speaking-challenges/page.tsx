@@ -57,13 +57,21 @@ export default function SpeakingChallengesPage() {
       setIsLoading(true)
       try {
         const newChallenges: SpeakingChallenge[] = []
+        // Keep track of categories we've already generated to avoid duplicates
+        const usedCategories: string[] = []
         
         // Generate 5 challenges sequentially
         for (let i = 0; i < 5; i++) {
           const wordSet = await generateWordSet({ 
             difficulty: selectedDifficulty || undefined,
-            includeQuestion: true // Request a question with the word set
+            includeQuestion: true, // Request a question with the word set
+            excludeCategories: usedCategories
           })
+          
+          // Add this category to used categories for future generations
+          if (wordSet.category) {
+            usedCategories.push(wordSet.category)
+          }
           
           const challenge: SpeakingChallenge = {
             id: `challenge-${i}`,

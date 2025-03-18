@@ -57,10 +57,19 @@ export default function WordAssociationPage() {
       setIsLoading(true)
       try {
         const newSets: WordSet[] = []
+        // Keep track of categories we've already generated to avoid duplicates
+        const usedCategories: string[] = []
         
         // Generate 5 sets sequentially
         for (let i = 0; i < 5; i++) {
-          const set = await generateWordSet({ difficulty: selectedDifficulty || undefined })
+          const set = await generateWordSet({ 
+            difficulty: selectedDifficulty || undefined,
+            excludeCategories: usedCategories
+          })
+          
+          // Add this category to used categories for future generations
+          usedCategories.push(set.category)
+          
           const setWithId = {
             ...set,
             id: `set-${i}`,
