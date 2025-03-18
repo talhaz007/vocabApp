@@ -89,18 +89,18 @@ const VocabularyFeedback = () => {
             { label: "Feedback", href: "/learn-practice/feedback", active: true },
           ]}
         />
-        <Card className="shadow-lg border-0 overflow-hidden">
-          <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
+        <Card className="shadow-lg border border-border">
+          <CardHeader className="bg-card dark:bg-card/60 border-b border-border">
             <CardTitle className="text-2xl">
               {processing ? "Generating your feedback..." : "Loading your feedback..."}
             </CardTitle>
-            <CardDescription className="text-slate-600">
+            <CardDescription>
               {processing ? "Please wait while we analyze your practice session" : "Please wait while we load your results"}
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col items-center justify-center py-16">
             <Loader2 className="h-16 w-16 animate-spin text-primary mb-4" />
-            <p className="text-slate-500 animate-pulse">
+            <p className="text-muted-foreground animate-pulse">
               {processing ? "Analyzing your vocabulary usage..." : "Almost there..."}
             </p>
           </CardContent>
@@ -118,19 +118,19 @@ const VocabularyFeedback = () => {
             { label: "Feedback", href: "/learn-practice/feedback", active: true },
           ]}
         />
-        <Card className="shadow-lg border-0 overflow-hidden">
-          <CardHeader className="bg-gradient-to-r from-amber-50 to-yellow-50 border-b">
+        <Card className="shadow-lg border border-border">
+          <CardHeader className="border-b border-border">
             <CardTitle className="text-2xl flex items-center gap-2">
-              <Brain className="h-6 w-6 text-amber-500" />
+              <Brain className="h-6 w-6 text-amber-500 dark:text-amber-400" />
               No feedback available
             </CardTitle>
-            <CardDescription className="text-slate-600">
+            <CardDescription>
               Complete a practice session to see your personalized feedback and progress.
             </CardDescription>
           </CardHeader>
           <CardContent className="py-8 flex flex-col items-center">
             <div className="mb-6 text-center max-w-md">
-              <p className="text-slate-600 mb-4">
+              <p className="text-muted-foreground mb-4">
                 Practice using vocabulary words in sentences to receive detailed feedback on your usage
                 and suggestions for improvement.
               </p>
@@ -138,7 +138,7 @@ const VocabularyFeedback = () => {
             <Button 
               size="lg"
               onClick={() => router.push("/learn-practice")}
-              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground"
             >
               Start Practicing
             </Button>
@@ -165,20 +165,25 @@ const VocabularyFeedback = () => {
   // Helper function for quality colors
   const getQualityColor = (quality) => {
     switch (quality.toLowerCase()) {
-      case "excellent": return "bg-gradient-to-r from-green-50 to-emerald-50 text-emerald-700 border-emerald-200"
-      case "good": return "bg-gradient-to-r from-blue-50 to-sky-50 text-blue-700 border-blue-200"
-      case "fair": return "bg-gradient-to-r from-amber-50 to-yellow-50 text-amber-700 border-amber-200"
-      case "poor": return "bg-gradient-to-r from-red-50 to-rose-50 text-red-700 border-red-200"
-      default: return "bg-gradient-to-r from-slate-50 to-gray-50 text-slate-700 border-slate-200"
+      case "excellent": 
+        return "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800"
+      case "good": 
+        return "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800"
+      case "fair": 
+        return "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
+      case "poor": 
+        return "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800"
+      default: 
+        return "bg-slate-100 dark:bg-slate-800 text-foreground border-border"
     }
   }
 
   // Helper function for progress bar color
   const getProgressColor = (score) => {
-    if (score >= 80) return "bg-gradient-to-r from-green-500 to-emerald-500"
-    if (score >= 60) return "bg-gradient-to-r from-blue-500 to-sky-500"
-    if (score >= 40) return "bg-gradient-to-r from-amber-500 to-yellow-500"
-    return "bg-gradient-to-r from-red-500 to-rose-500"
+    if (score >= 80) return "bg-green-600 dark:bg-green-500"
+    if (score >= 60) return "bg-blue-600 dark:bg-blue-500"
+    if (score >= 40) return "bg-amber-600 dark:bg-amber-500"
+    return "bg-red-600 dark:bg-red-500"
   }
 
   // Count correct answers
@@ -195,37 +200,28 @@ const VocabularyFeedback = () => {
       />
 
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
+        <h1 className="text-3xl font-bold text-foreground">
           Your Vocabulary Results
         </h1>
       </div>
 
-      <Card className="shadow-lg border-0 overflow-hidden">
-        <CardHeader className="pb-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
+      <Card className="shadow-lg border border-border">
+        <CardHeader className="pb-6 border-b border-border">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <div>
-              <CardTitle className="text-2xl text-slate-800">Practice Results</CardTitle>
-              <CardDescription className="text-slate-600 mt-1">
+              <CardTitle className="text-2xl">Practice Results</CardTitle>
+              <CardDescription className="mt-1">
                 See how well you used vocabulary words in context
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              {/* <div className="bg-white rounded-lg p-3 shadow-sm flex items-center gap-3 border">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 flex items-center justify-center">
-                  <span className="text-xl font-bold text-white">{vocabularyMastery}</span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-xs text-slate-500">Mastery Score</span>
-                  <span className="font-medium text-slate-800">{getMasteryLevel(vocabularyMastery)}</span>
-                </div>
-              </div> */}
-              <div className="bg-white rounded-lg p-3 shadow-sm flex items-center gap-3 border">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-r from-green-500 to-emerald-500 flex items-center justify-center">
+              <div className="bg-card rounded-lg p-3 shadow-sm flex items-center gap-3 border border-border">
+                <div className="w-12 h-12 rounded-full bg-green-600 dark:bg-green-500 flex items-center justify-center">
                   <span className="text-xl font-bold text-white">{correctPercentage}%</span>
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-xs text-slate-500">Accuracy</span>
-                  <span className="text-sm font-medium text-slate-800">{correctAnswers} of {sentenceFeedback.length}</span>
+                  <span className="text-xs text-muted-foreground">Accuracy</span>
+                  <span className="text-sm font-medium">{correctAnswers} of {sentenceFeedback.length}</span>
                 </div>
               </div>
             </div>
@@ -233,58 +229,39 @@ const VocabularyFeedback = () => {
         </CardHeader>
 
         <CardContent className="space-y-8 p-6">
-          {/* Mastery Progress */}
-          {/* <div className="space-y-3 pt-2">
-            <div className="flex justify-between items-center">
-              <h3 className="font-medium flex items-center gap-2">
-                <Brain className="h-5 w-5 text-indigo-500" />
-                <span>Vocabulary Mastery</span>
-              </h3>
-              <span className="text-sm font-medium bg-indigo-100 text-indigo-700 px-2 py-1 rounded-md">
-                {vocabularyMastery}%
-              </span>
-            </div>
-            <Progress 
-              value={vocabularyMastery} 
-              className="h-3 rounded-full bg-slate-100"
-              indicatorClassName={getProgressColor(vocabularyMastery)}
-            />
-            <p className="text-sm text-slate-500">{getMasteryLevel(vocabularyMastery)} level - {100-vocabularyMastery}% to reach the next level</p>
-          </div> */}
-
           {/* Overall Feedback */}
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-100 shadow-sm">
-            <h3 className="font-medium mb-3 flex items-center gap-2 text-slate-800">
-              <Sparkles className="h-5 w-5 text-indigo-500" />
+          <div className="bg-muted p-6 rounded-xl border border-border shadow-sm">
+            <h3 className="font-medium mb-3 flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-indigo-500 dark:text-indigo-400" />
               Personalized Feedback
             </h3>
-            <p className="text-slate-700 leading-relaxed">{overallFeedback}</p>
+            <p className="leading-relaxed">{overallFeedback}</p>
           </div>
 
           {/* Individual Word Feedback */}
           <div className="pt-2">
-            <h3 className="font-medium mb-4 flex items-center gap-2 text-slate-800 text-lg">
-              <BookOpen className="h-5 w-5 text-indigo-500" />
+            <h3 className="font-medium mb-4 flex items-center gap-2 text-lg">
+              <BookOpen className="h-5 w-5 text-indigo-500 dark:text-indigo-400" />
               Detailed Sentence Analysis
             </h3>
-            <Accordion type="single" collapsible className="w-full bg-white rounded-xl divide-y">
+            <Accordion type="single" collapsible className="w-full bg-card rounded-xl divide-y divide-border">
               {sentenceFeedback.map((item, index) => (
                 <AccordionItem value={`item-${index}`} key={index} className="border-0">
-                  <AccordionTrigger className="py-5 px-6 hover:no-underline hover:bg-slate-50 rounded-t-xl">
+                  <AccordionTrigger className="py-5 px-6 hover:no-underline hover:bg-muted/50 rounded-t-xl">
                     <div className="flex items-center w-full">
                       <div className="mr-4">
                         {item.isCorrect ? (
-                          <div className="bg-green-100 p-2 rounded-full">
-                            <Check className="h-5 w-5 text-green-600" />
+                          <div className="bg-green-100 dark:bg-green-900/30 p-2 rounded-full">
+                            <Check className="h-5 w-5 text-green-600 dark:text-green-400" />
                           </div>
                         ) : (
-                          <div className="bg-red-100 p-2 rounded-full">
-                            <X className="h-5 w-5 text-red-600" />
+                          <div className="bg-red-100 dark:bg-red-900/30 p-2 rounded-full">
+                            <X className="h-5 w-5 text-red-600 dark:text-red-400" />
                           </div>
                         )}
                       </div>
                       <div className="flex-1 text-left">
-                        <span className="font-semibold text-slate-800">{item.word}</span>
+                        <span className="font-semibold">{item.word}</span>
                       </div>
                       <Badge className={`ml-2 px-3 py-1 rounded-full text-xs font-medium ${getQualityColor(item.usageQuality)}`}>
                         {item.usageQuality}
@@ -294,33 +271,33 @@ const VocabularyFeedback = () => {
                   <AccordionContent className="px-6 pb-5">
                     <div className="space-y-4 pl-12 pt-2">
                       <div>
-                        <h4 className="text-sm font-medium mb-2 text-slate-700">Your sentence:</h4>
-                        <p className="text-base bg-slate-50 p-3 rounded-lg border border-slate-200">"{item.sentence}"</p>
+                        <h4 className="text-sm font-medium mb-2">Your sentence:</h4>
+                        <p className="text-base bg-muted/50 p-3 rounded-lg border border-border">"{item.sentence}"</p>
                       </div>
                       <div>
-                        <h4 className="text-sm font-medium mb-2 text-slate-700">Feedback:</h4>
-                        <p className="text-base text-slate-700">{item.feedback}</p>
+                        <h4 className="text-sm font-medium mb-2">Feedback:</h4>
+                        <p className="text-base">{item.feedback}</p>
                       </div>
                       {item.improvementSuggestions && item.improvementSuggestions.length > 0 && (
                         <div>
-                          <h4 className="text-sm font-medium mb-2 text-slate-700">Suggestions for improvement:</h4>
+                          <h4 className="text-sm font-medium mb-2">Suggestions for improvement:</h4>
                           <ul className="space-y-2">
                             {item.improvementSuggestions.map((suggestion, i) => (
                               <li key={i} className="flex items-start gap-2">
-                                <CheckCircle2 className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                                <span className="text-slate-700">{suggestion}</span>
+                                <CheckCircle2 className="h-5 w-5 text-green-500 dark:text-green-400 mt-0.5 flex-shrink-0" />
+                                <span>{suggestion}</span>
                               </li>
                             ))}
                           </ul>
                         </div>
                       )}
                       {item.exampleUsage && (
-                        <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-100">
-                          <h4 className="text-sm font-medium mb-2 text-slate-700 flex items-center gap-2">
-                            <Sparkles className="h-4 w-4 text-indigo-500" />
+                        <div className="bg-muted border border-border p-4 rounded-lg">
+                          <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+                            <Sparkles className="h-4 w-4 text-indigo-500 dark:text-indigo-400" />
                             Example Usage:
                           </h4>
-                          <p className="text-base text-slate-700 italic">"{item.exampleUsage}"</p>
+                          <p className="text-base italic">"{item.exampleUsage}"</p>
                         </div>
                       )}
                     </div>
@@ -331,7 +308,7 @@ const VocabularyFeedback = () => {
           </div>
         </CardContent>
 
-        <CardFooter className="py-5 px-6 border-t bg-gradient-to-r from-slate-50 to-gray-50 flex flex-col sm:flex-row gap-3 justify-between">
+        <CardFooter className="py-5 px-6 border-t border-border bg-card/60 flex flex-col sm:flex-row gap-3 justify-between">
           <Button 
             variant="outline" 
             onClick={() => router.push("/learn-practice")}
@@ -342,7 +319,7 @@ const VocabularyFeedback = () => {
           </Button>
           <Button 
             onClick={() => router.push("/learn-practice/sentence-usage")}
-            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 gap-2"
+            className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
           >
             <Sparkles className="h-4 w-4" />
             Practice Again
