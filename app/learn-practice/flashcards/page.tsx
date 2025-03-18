@@ -219,7 +219,7 @@ export default function FlashcardsPage() {
         />
         <div className="flex flex-col items-center justify-center h-96">
           <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-          <p className="text-lg text-muted-foreground">Generating personalized flashcards...</p>
+          <p className="text-lg text-muted-foreground">Generating flashcards...</p>
         </div>
       </div>
     )
