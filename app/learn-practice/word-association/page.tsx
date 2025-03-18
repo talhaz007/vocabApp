@@ -226,7 +226,7 @@ export default function WordAssociationPage() {
       toast({
         title: "All sets completed!",
         description: "You've completed all the word association exercises.",
-      })
+      });
     }
   }
 
@@ -258,8 +258,54 @@ export default function WordAssociationPage() {
     }
   }
 
-  const handleFinish = () => {
-    router.push("/learn-practice")
+  const handleFinish = async () => {
+    // Save the current question's data before finishing
+    const updatedProgress = [...wordSetProgress];
+    updatedProgress[currentIndex] = {
+      selectedWords,
+      userSentence,
+      feedback,
+      feedbackType,
+      timeLeft,
+      timerActive,
+      showAlternatives,
+      alternativeSentences,
+    };
+    setWordSetProgress(updatedProgress);
+  
+    // Prepare data for API
+    const exercises = [];
+    
+    // Only include exercises where the user actually created a sentence
+    updatedProgress.forEach((progress, index) => {
+      if (progress.selectedWords.length > 0 && progress.userSentence) {
+        const wordSet = wordSets[index];
+        exercises.push({
+          category: wordSet.category,
+          difficulty: wordSet.difficulty,
+          selectedWords: progress.selectedWords,
+          userSentence: progress.userSentence,
+          // Add feedback if available
+          feedback: progress.feedback || null
+        });
+      }
+    });
+    
+    // Only proceed if we have at least one completed exercise
+    if (exercises.length === 0) {
+      toast({
+        title: "No completed exercises",
+        description: "Please complete at least one exercise before finishing.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Store the exercises in localStorage to be processed by the feedback page
+    localStorage.setItem('wordAssociationExercises', JSON.stringify(exercises));
+    
+    // Navigate to feedback page immediately
+    router.push('/learn-practice/word-association/feedback');
   }
 
   const handleChangeDifficulty = (difficulty: "easy" | "medium" | "hard" | null) => {
@@ -513,4 +559,3 @@ export default function WordAssociationPage() {
     </div>
   )
 }
-
