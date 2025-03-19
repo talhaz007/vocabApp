@@ -182,7 +182,7 @@ export default function DashboardPage() {
 
       {/* Stats Overview Section */}
       <section className="mb-12">
-        <div className="flex justify-between items-center mb-6">
+        {/* <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold">Your Progress</h2>
           <div className="flex items-center gap-2 bg-muted p-1 rounded-md">
             <Button
@@ -210,10 +210,11 @@ export default function DashboardPage() {
               All Time
             </Button>
           </div>
-        </div>
+        </div> */}
+        <h2 className="text-2xl font-bold mb-6">Stats</h2>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
+          <Card className="bg-gradient-to-r from-blue-100 to-blue-200">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium">Words Learned</CardTitle>
             </CardHeader>
@@ -223,13 +224,13 @@ export default function DashboardPage() {
               ) : (
                 <div className="text-2xl font-bold">{stats.wordsLearned}</div>
               )}
-              <p className="text-xs text-muted-foreground">
+              {/* <p className="text-xs text-muted-foreground">
                 +5 from last week
-              </p>
+              </p> */}
             </CardContent>
           </Card>
           
-          <Card>
+          <Card className="bg-gradient-to-r from-green-100 to-green-200">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium">Current Streak</CardTitle>
             </CardHeader>
@@ -245,7 +246,7 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
           
-          <Card>
+          <Card className="bg-gradient-to-r from-purple-100 to-purple-200">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium">Exercises Completed</CardTitle>
             </CardHeader>
@@ -261,7 +262,7 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
           
-          <Card>
+          {/* <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium">Total Points</CardTitle>
             </CardHeader>
@@ -275,7 +276,7 @@ export default function DashboardPage() {
                 Earn more by completing exercises
               </p>
             </CardContent>
-          </Card>
+          </Card> */}
         </div>
       </section>
 
