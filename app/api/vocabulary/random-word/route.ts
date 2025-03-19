@@ -12,6 +12,7 @@ const WordDetailsSchema = z.object({
   word: z.string(),
   definition: z.string(),
   mnemonic: z.string(),
+  mnemonicDescription: z.string(),
   difficulty: z.enum(["easy", "medium", "hard"]),
   hints: z.array(z.string()),
   examples: z.array(z.string()),
@@ -26,15 +27,22 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { difficulty, category, mnemonicType, excludeWords } = body;
     
-    const prompt = `
-      Generate a vocabulary word ${difficulty ? `with ${difficulty} difficulty` : ""} 
-      ${category ? `from the category "${category}"` : ""}
-      for students in grades 1 to 7. 
-      ${mnemonicType === "sound" ? 
-        "with a sound-based mnemonic that is a SINGLE WORD that sounds similar to the vocabulary word. The mnemonic should NOT be a phrase or sentence, just one word that has similar phonetics." : 
-        ""}
-      ${excludeWords ? `Do NOT generate the word "${excludeWords.join(', ')}" - provide a different word.` : ""}
-    `;
+    const prompt = `Generate a vocabulary word ${difficulty ? `with ${difficulty} difficulty` : ""} ${category ? `from the category "${category}"` : ""} for students in grades 1 to 7. 
+
+    The vocabulary word MUST be age-appropriate and NOT too difficult for elementary/middle school students (grades 1-7). Avoid advanced words like "glistening" or words that would be challenging for this age group.
+    
+    Create a memorable mnemonic for this word using a single word or short phrase that sounds similar to the vocabulary word. For example: For the word "eloquent," the mnemonic could be "elephant" - "Imagine an elephant giving a powerful speech—an eloquent elephant!"
+    
+    The mnemonic should:
+    - Use a word that sounds similar to the vocabulary word
+    - It should be a meaningful mnemonic that helps students remember both pronunciation and definition
+    - Include a brief, vivid mental image connecting the sound-alike word to the meaning
+    - Be appropriate and engaging for elementary/middle school students
+    - Use simple language that helps students remember both pronunciation and definition
+    - The mnemonic description should not be too long.
+    - The mnemonic should be free of any punctuation marks, including ? and !, to ensure clarity for students.
+    
+    ${excludeWords ? `Do NOT generate any of these words: "${excludeWords.join(', ')}"` : ""}`;
 
     const completion = await openai.beta.chat.completions.parse({
       model: "gpt-4o-mini",

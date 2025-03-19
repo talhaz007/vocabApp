@@ -19,6 +19,7 @@ interface SoundMnemonic {
   definition: string
   mnemonic: string
   soundDescription: string
+  mnemonicDescription: string
   difficulty: "easy" | "medium" | "hard"
 }
 
@@ -75,6 +76,7 @@ export default function SoundMnemonicsPage() {
             word: word.word,
             definition: word.definition,
             mnemonic: word.mnemonic,
+            mnemonicDescription: word.mnemonicDescription,
             soundDescription: word.mnemonic,
             difficulty: word.difficulty
           }
@@ -444,9 +446,10 @@ export default function SoundMnemonicsPage() {
                 <div className="flex items-center gap-4">
                   <div>
                     <p className="font-medium">{currentMnemonic.mnemonic}</p>
-                    <p className="text-sm text-muted-foreground mt-1">{currentMnemonic.soundDescription}</p>
+                    <p className="text-sm text-muted-foreground mt-1">{currentMnemonic.mnemonicDescription}</p>
+                    {/* <p className="text-sm text-muted-foreground mt-1">{currentMnemonic.soundDescription}</p> */}
                   </div>
-                  <Button variant="outline" size="icon" onClick={speakMnemonic}>
+                  <Button variant="outline" size="icon" onClick={speakMnemonic} className="flex items-center justify-center w-10">
                     <Volume2 className="h-4 w-4" />
                   </Button>
                 </div>
