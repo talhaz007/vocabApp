@@ -17,32 +17,32 @@ import { motion } from "framer-motion"
 
 // App recommendation metadata
 const appMetadata = {
-  "Grammarly": {
-    icon: "pencil",
-    url: "https://grammarly.com",
-    color: "blue"
-  },
-  "Spelling Pro": {
-    icon: "check-square",
-    url: "https://spellingpro.com",
-    color: "green"
-  },
-  "Writely": {
-    icon: "file-text",
-    url: "https://writely.com",
-    color: "purple"
-  },
-  "Readly": {
-    icon: "book-open",
-    url: "https://readly.com",
-    color: "amber"
-  },
-  "Speakify": {
-    icon: "mic",
-    url: "https://speakify.com",
-    color: "red"
-  }
-};
+    "Grammarly": {
+      icon: "pencil",
+      url: "http://textly.scholarlytraining.com/",
+      color: "blue"
+    },
+    "Spelling Pro": {
+      icon: "check-square",
+      url: "http://textly.scholarlytraining.com/",
+      color: "green"
+    },
+    "Writely": {
+      icon: "file-text",
+      url: "http://textly.scholarlytraining.com/",
+      color: "purple"
+    },
+    "Readly": {
+      icon: "book-open",
+      url: "https://readly.scholarlytraining.com/dashboard",
+      color: "amber"
+    },
+    "Speakify": {
+      icon: "mic",
+      url: "https://speakify.scholarlytraining.com/",
+      color: "red"
+    }
+  };
 
 const MemoryFeedback = () => {
   const router = useRouter()
