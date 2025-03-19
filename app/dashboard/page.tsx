@@ -214,15 +214,15 @@ export default function DashboardPage() {
         <h2 className="text-2xl font-bold mb-6">Stats</h2>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card className="bg-gradient-to-r from-blue-100 to-blue-200">
+          <Card className="bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-800 dark:to-blue-900">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Words Learned</CardTitle>
+              <CardTitle className="text-sm font-medium text-gray-900 dark:text-white">Words Learned</CardTitle>
             </CardHeader>
             <CardContent>
               {isLoading ? (
                 <div className="h-6 w-12 bg-muted animate-pulse rounded" />
               ) : (
-                <div className="text-2xl font-bold">{stats.wordsLearned}</div>
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.wordsLearned}</div>
               )}
               {/* <p className="text-xs text-muted-foreground">
                 +5 from last week
@@ -230,33 +230,33 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
           
-          <Card className="bg-gradient-to-r from-green-100 to-green-200">
+          <Card className="bg-gradient-to-r from-green-100 to-green-200 dark:from-green-800 dark:to-green-900">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Current Streak</CardTitle>
+              <CardTitle className="text-sm font-medium text-gray-900 dark:text-white">Current Streak</CardTitle>
             </CardHeader>
             <CardContent>
               {isLoading ? (
                 <div className="h-6 w-12 bg-muted animate-pulse rounded" />
               ) : (
-                <div className="text-2xl font-bold">{stats.streak} days</div>
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.streak} days</div>
               )}
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground dark:text-gray-300">
                 Keep practicing daily!
               </p>
             </CardContent>
           </Card>
           
-          <Card className="bg-gradient-to-r from-purple-100 to-purple-200">
+          <Card className="bg-gradient-to-r from-purple-100 to-purple-200 dark:from-purple-800 dark:to-purple-900">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Exercises Completed</CardTitle>
+              <CardTitle className="text-sm font-medium text-gray-900 dark:text-white">Exercises Completed</CardTitle>
             </CardHeader>
             <CardContent>
               {isLoading ? (
                 <div className="h-6 w-12 bg-muted animate-pulse rounded" />
               ) : (
-                <div className="text-2xl font-bold">{stats.totalExercises}</div>
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalExercises}</div>
               )}
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground dark:text-gray-300">
                 Across all learning modes
               </p>
             </CardContent>
