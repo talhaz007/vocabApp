@@ -87,6 +87,7 @@ export default function WritingPromptsPage() {
   const [grammarSuggestions, setGrammarSuggestions] = useState<string[]>([])
   const [styleSuggestions, setStyleSuggestions] = useState<string[]>([])
   const [feedbackType, setFeedbackType] = useState<"success" | "error" | null>(null)
+  const [result, setResult] = useState<any>(null) // Store the full API response
   const { toast } = useToast()
   const isInitialized = useRef(false)
   const [activeTab, setActiveTab] = useState<string>("write")
@@ -271,6 +272,10 @@ export default function WritingPromptsPage() {
       
       const result = await response.json()
       
+      // Store the full result
+      setResult(result)
+      
+      // Set individual pieces of state for backward compatibility
       setFeedback(result.feedback)
       setUsedWords(result.usedWords)
       setGrammarSuggestions(result.grammarSuggestions || [])
@@ -619,6 +624,25 @@ export default function WritingPromptsPage() {
                         </h3>
                         <p className={feedbackType === "success" ? "text-green-700" : "text-red-700"}>{feedback}</p>
                         
+                        {/* Add Writing Score */}
+                        {result?.writingScore !== undefined && (
+                          <div className="mt-3">
+                            <p className="font-medium text-sm">Writing Score:</p>
+                            <div className="mt-1 flex items-center">
+                              <div className="h-2.5 w-full bg-gray-200 rounded-full">
+                                <div 
+                                  className={`h-2.5 rounded-full ${
+                                    result.writingScore >= 80 ? "bg-green-500" : 
+                                    result.writingScore >= 60 ? "bg-yellow-500" : "bg-red-500"
+                                  }`} 
+                                  style={{ width: `${result.writingScore}%` }}
+                                ></div>
+                              </div>
+                              <span className="ml-2 text-sm font-medium">{result.writingScore}/100</span>
+                            </div>
+                          </div>
+                        )}
+                        
                         {usedWords.length > 0 && (
                           <div className="mt-3">
                             <p className="font-medium text-sm">Target words used:</p>
@@ -654,6 +678,24 @@ export default function WritingPromptsPage() {
                                 <li key={index} className="text-blue-700">{suggestion}</li>
                               ))}
                             </ul>
+                          </div>
+                        )}
+                        
+                        {/* Add App Recommendations */}
+                        {result?.appRecommendations && result.appRecommendations.length > 0 && (
+                          <div className="mt-4">
+                            <p className="font-medium text-sm">Recommended Tools:</p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+                              {result.appRecommendations.map((app, index) => (
+                                <div key={index} className="flex items-start p-2 rounded-md bg-blue-50 border border-blue-100">
+                                  <Bell className="h-4 w-4 text-blue-500 mt-0.5 mr-2 flex-shrink-0" />
+                                  <div>
+                                    <p className="text-sm font-medium text-blue-700">{app.appName}</p>
+                                    <p className="text-xs text-blue-600">{app.reason}</p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
                           </div>
                         )}
                       </div>
