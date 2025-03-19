@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast"
 import { Breadcrumb } from "@/components/breadcrumb"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { generateRandomWord, saveLearnedWord, type WordDetails } from "@/lib/ai-word-service"
+import { incrementWordLearned, incrementExerciseCompleted } from "@/lib/stats-service"
 import { useRouter } from "next/navigation"
 
 interface AudioWord {
@@ -202,29 +203,6 @@ export default function AudioLearningPage() {
         title: "Correct!",
         description: "You identified the word correctly!",
       })
-      
-      // Save the word as learned
-      try {
-        await saveLearnedWord(
-          {
-            word: audioWords[currentIndex].word,
-            definition: audioWords[currentIndex].definition,
-            mnemonic: "",
-            difficulty: audioWords[currentIndex].difficulty,
-            hints: [],
-            examples: [audioWords[currentIndex].example],
-            synonyms: [],
-            antonyms: []
-          },
-          {
-            mastery: 80, // High mastery since they correctly identified it
-            lastPracticed: new Date(),
-            notes: "Correctly identified in audio learning exercise"
-          }
-        )
-      } catch (error) {
-        console.error("Error saving audio learning progress:", error)
-      }
     } else {
       setIsCorrect(false)
       toast({
@@ -280,7 +258,7 @@ export default function AudioLearningPage() {
     isInitialized.current = false
   }
 
-  const handleFinish = () => {
+  const handleFinish = async () => {
     // Only include exercises that have been attempted (have an answer)
     const exercisesToSave = audioLearningProgress
       .map((progress, index) => {
@@ -303,6 +281,51 @@ export default function AudioLearningPage() {
     
     // Only proceed if there are attempted exercises
     if (exercisesToSave.length > 0) {
+      // Save all correctly identified words to the user's learned words
+      try {
+        for (let i = 0; i < audioLearningProgress.length; i++) {
+          const progress = audioLearningProgress[i];
+          
+          // Only save words that were correctly identified
+          if (progress.isCorrect === true) {
+            const word = audioWords[i];
+            
+            // Save the word as learned
+            saveLearnedWord(
+              {
+                word: word.word,
+                definition: word.definition,
+                mnemonic: "",
+                difficulty: word.difficulty,
+                hints: [],
+                examples: [word.example],
+                synonyms: [],
+                antonyms: []
+              },
+              {
+                mastery: 80, // High mastery since they correctly identified it
+                lastPracticed: new Date(),
+                notes: "Correctly identified in audio learning exercise"
+              }
+            );
+            
+            // Increment word learned counter for each correctly identified word
+             incrementWordLearned();
+          }
+        }
+        
+        // Increment exercise completed once for the whole session
+        await incrementExerciseCompleted(15); // Award 20 points for completing the exercise
+        
+      } catch (error) {
+        console.error("Error saving audio learning progress:", error);
+        toast({
+          title: "Error saving progress",
+          description: "Your progress couldn't be saved, but your feedback will still be available.",
+          variant: "destructive",
+        });
+      }
+      
       localStorage.setItem('savedSpeakingListeningExercises', JSON.stringify(exercisesToSave));
       router.push("/speaking-listening/feedback");
     } else {

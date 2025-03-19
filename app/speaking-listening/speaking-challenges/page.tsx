@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast"
 import { Breadcrumb } from "@/components/breadcrumb"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { generateWordSet, saveLearnedWord } from "@/lib/ai-word-service"
-
+import { incrementWordLearned, incrementExerciseCompleted } from "@/lib/stats-service"
 interface SpeakingChallenge {
   id: string
   question: string
@@ -236,38 +236,7 @@ export default function SpeakingChallengesPage() {
       setFeedback(result.feedback);
       setFeedbackType(result.isValid ? "success" : "error");
       
-      // Save successfully used words to Supabase
-      if (result.isValid && result.detectedWords.length > 1) {
-        try {
-          // Save each detected word to the learned_words table
-          for (const word of result.detectedWords) {
-            saveLearnedWord(
-              {
-                word: word,
-                definition: "Used in speaking challenge",
-                mnemonic: "",
-                difficulty: currentChallenge.difficulty,
-                hints: [],
-                examples: [result.transcription], // Use the transcription as an example
-                synonyms: [],
-                antonyms: []
-              },
-              {
-                mastery: result.quality === "excellent" ? 90 : 70, // Higher mastery for excellent quality
-                lastPracticed: new Date(),
-                notes: `Used in speaking challenge: "${currentChallenge.question}"`
-              }
-            )
-          }
-          
-          toast({
-            title: `${result.detectedWords.length} words saved to your vocabulary`,
-            description: "Your progress has been recorded",
-          })
-        } catch (error) {
-          console.error("Error saving words to vocabulary:", error)
-        }
-      }
+      // Remove the saveLearnedWord calls from here
     } catch (error) {
       console.error("Error analyzing response:", error);
       toast({
@@ -331,7 +300,18 @@ export default function SpeakingChallengesPage() {
     }
   }
 
-  const handleFinish = () => {
+  const handleFinish = async () => {
+    // Save the current challenge state before finishing
+    const updatedProgress = [...challengeProgress];
+    updatedProgress[currentIndex] = {
+      audioURL,
+      feedback,
+      feedbackType,
+      detectedWords,
+      isProcessing,
+    };
+    setChallengeProgress(updatedProgress);
+    
     // Only include exercises that have been attempted (have feedback)
     const exercisesToSave = challengeProgress
       .map((progress, index) => {
@@ -352,6 +332,57 @@ export default function SpeakingChallengesPage() {
     
     // Only proceed if there are attempted exercises
     if (exercisesToSave.length > 0) {
+      // Save all successfully used words to Supabase
+      try {
+        for (let i = 0; i < challengeProgress.length; i++) {
+          const progress = challengeProgress[i];
+          
+          // Only save words from successful challenges
+          if (progress.feedbackType === "success" && progress.detectedWords && progress.detectedWords.length > 0) {
+            const challenge = speakingChallenges[i];
+            
+            // Save each detected word to the learned_words table
+            for (const word of progress.detectedWords) {
+              await saveLearnedWord(
+                {
+                  word: word,
+                  definition: "Used in speaking challenge",
+                  mnemonic: "",
+                  difficulty: challenge.difficulty,
+                  hints: [],
+                  examples: [challenge.question], // Use the question as context
+                  synonyms: [],
+                  antonyms: []
+                },
+                {
+                  mastery: 85, // High mastery for speaking usage
+                  lastPracticed: new Date(),
+                  notes: `Used in speaking challenge: "${challenge.question}"`
+                }
+              );
+              
+              // Increment word learned counter for each detected word
+               incrementWordLearned();
+            }
+          }
+        }
+        
+        // Increment exercise completed once for the whole session
+        await incrementExerciseCompleted(35); // Award 35 points for completing speaking challenges
+        
+        toast({
+          title: "Speaking challenges completed",
+          description: "Your progress has been saved",
+        });
+      } catch (error) {
+        console.error("Error saving speaking challenge progress:", error);
+        toast({
+          title: "Error saving progress",
+          description: "Your progress couldn't be saved, but your feedback will still be available.",
+          variant: "destructive",
+        });
+      }
+      
       localStorage.setItem('savedSpeakingListeningExercises', JSON.stringify(exercisesToSave));
       router.push("/speaking-listening/feedback");
     } else {

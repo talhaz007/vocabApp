@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast"
 import { generateMnemonic } from "@/lib/ai-helpers"
 import { Breadcrumb } from "@/components/breadcrumb"
 import { generateRandomWord, saveLearnedWord, type WordDetails } from "@/lib/ai-word-service"
+import { incrementWordLearned, incrementExerciseCompleted } from "@/lib/stats-service"
 
 export default function FlashcardsPage() {
   const router = useRouter()
@@ -27,6 +28,16 @@ export default function FlashcardsPage() {
   const [selectedDifficulty, setSelectedDifficulty] = useState<"easy" | "medium" | "hard" | null>(null)
   const { toast } = useToast()
   const isInitialized = useRef(false)
+
+  // Add state to track card progress
+  const [cardProgress, setCardProgress] = useState(() => 
+    Array(5).fill({
+      isFlipped: false,
+      lastReviewed: null,
+      nextReview: null,
+      difficulty: null,
+    })
+  );
 
   // Load initial flashcards
   useEffect(() => {
@@ -100,8 +111,18 @@ export default function FlashcardsPage() {
 
   const handleNext = () => {
     if (currentIndex < flashcards.length - 1) {
-      setCurrentIndex(currentIndex + 1)
-      setIsFlipped(false)
+      // Save current card state
+      const updatedProgress = [...cardProgress];
+      updatedProgress[currentIndex] = {
+        ...updatedProgress[currentIndex],
+        isFlipped,
+      };
+      
+      // Update state with next card's saved progress
+      const nextProgress = updatedProgress[currentIndex + 1];
+      setCurrentIndex(currentIndex + 1);
+      setIsFlipped(nextProgress.isFlipped || false);
+      setCardProgress(updatedProgress);
     } else {
       toast({
         title: "Congratulations!",
@@ -112,13 +133,29 @@ export default function FlashcardsPage() {
 
   const handlePrevious = () => {
     if (currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1)
-      setIsFlipped(false)
+      // Save current card state
+      const updatedProgress = [...cardProgress];
+      updatedProgress[currentIndex] = {
+        ...updatedProgress[currentIndex],
+        isFlipped,
+      };
+      
+      // Update state with previous card's saved progress
+      const prevProgress = updatedProgress[currentIndex - 1];
+      setCurrentIndex(currentIndex - 1);
+      setIsFlipped(prevProgress.isFlipped || false);
+      setCardProgress(updatedProgress);
     }
   }
 
   const handleFlip = () => {
-    setIsFlipped(!isFlipped)
+    const updatedProgress = [...cardProgress];
+    updatedProgress[currentIndex] = {
+      ...updatedProgress[currentIndex],
+      isFlipped: !isFlipped
+    };
+    setCardProgress(updatedProgress);
+    setIsFlipped(!isFlipped);
   }
 
   const handleMarkDifficulty = async (difficulty: "easy" | "medium" | "hard") => {
@@ -138,30 +175,28 @@ export default function FlashcardsPage() {
     }
     setFlashcards(updatedFlashcards)
 
-    // Save to user's learned words in Supabase
-    try {
-      await saveLearnedWord(currentWord, {
-        mastery: difficulty === "easy" ? 90 : difficulty === "medium" ? 60 : 30,
-        lastPracticed: now,
-      })
-      
-      toast({
-        title: "Progress saved",
-        description: `Marked "${currentWord.word}" as ${difficulty}`,
-      })
-    } catch (error) {
-      toast({
-        title: "Error saving progress",
-        description: "Your progress couldn't be saved. Please try again.",
-        variant: "destructive",
-      })
-    }
+    // Update card progress
+    const updatedProgress = [...cardProgress];
+    updatedProgress[currentIndex] = {
+      ...updatedProgress[currentIndex],
+      isFlipped,
+      lastReviewed: now,
+      nextReview: new Date(
+        now.getTime() + (difficulty === "easy" ? 3 : difficulty === "medium" ? 1 : 0.5) * 24 * 60 * 60 * 1000,
+      ),
+      difficulty,
+    };
+    setCardProgress(updatedProgress);
+
+    toast({
+      title: "Progress saved",
+      description: `Marked "${currentWord.word}" as ${difficulty}`,
+    })
 
     // Move to next card after marking
     if (currentIndex < flashcards.length - 1) {
       setTimeout(() => {
-        setCurrentIndex(currentIndex + 1)
-        setIsFlipped(false)
+        handleNext();
       }, 500)
     }
   }
@@ -208,14 +243,54 @@ export default function FlashcardsPage() {
     setSelectedDifficulty(difficulty)
     setCurrentIndex(0)
     setIsFlipped(false)
+    // Reset card progress when changing difficulty
+    setCardProgress(Array(5).fill({
+      isFlipped: false,
+      lastReviewed: null,
+      nextReview: null,
+      difficulty: null,
+    }));
     // Reset initialization flag to trigger flashcard reload
     isInitialized.current = false;
   }
 
-  // Update the handleFinish function to use router
-  const handleFinish = () => {
-    // Navigate back to the learn-practice page using Next.js router
-    router.push("/learn-practice")
+  // Update the handleFinish function to save all learned words at once
+  const handleFinish = async () => {
+    // Save all words that have been marked with a difficulty
+    try {
+      for (let i = 0; i < flashcards.length; i++) {
+        const card = flashcards[i];
+        const progress = cardProgress[i];
+        
+        // Only save words that have been marked with a difficulty
+        if (progress.difficulty) {
+          await saveLearnedWord(card, {
+            mastery: progress.difficulty === "easy" ? 90 : progress.difficulty === "medium" ? 60 : 30,
+            lastPracticed: progress.lastReviewed || new Date(),
+          });
+          
+          // Increment word learned counter for each saved word
+          await incrementWordLearned();
+        }
+      }
+      
+      // Increment exercise completed once for the whole session
+      await incrementExerciseCompleted(15); // Award 15 points for completing the exercise
+      
+      toast({
+        title: "Exercise completed!",
+        description: "Your progress has been saved.",
+      });
+      
+      // Navigate back to the learn-practice page using Next.js router
+      router.push("/learn-practice");
+    } catch (error) {
+      toast({
+        title: "Error saving progress",
+        description: "Your progress couldn't be saved. Please try again.",
+        variant: "destructive",
+      });
+    }
   }
 
   if (isLoading) {

@@ -10,7 +10,8 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { useToast } from "@/hooks/use-toast"
 import { Breadcrumb } from "@/components/breadcrumb"
-import { generateWordSet, evaluateSentence } from "@/lib/ai-word-service"
+import { generateWordSet, evaluateSentence, saveLearnedWord } from "@/lib/ai-word-service"
+import { incrementWordLearned, incrementExerciseCompleted } from "@/lib/stats-service"
 
 interface WordSet {
   id: string
@@ -184,6 +185,8 @@ export default function WordAssociationPage() {
         feedbackType: result.isValid ? "success" : "error",
         feedback: result.feedback,
         alternativeSentences: result.alternativeSentences || [],
+        selectedWords: selectedWords,
+        userSentence: userSentence,
       };
       setWordSetProgress(updatedProgress);
 
@@ -311,6 +314,57 @@ export default function WordAssociationPage() {
         variant: "destructive",
       });
       return;
+    }
+    
+    // Save successfully completed exercises to the user's learned words
+    try {
+      let successfulExercises = 0;
+      
+      for (let i = 0; i < wordSetProgress.length; i++) {
+        const progress = wordSetProgress[i];
+        
+        // Only save exercises with successful feedback
+        if (progress.feedbackType === "success" && progress.selectedWords.length > 0) {
+          const wordSet = wordSets[i];
+          
+          // Create a word object for each selected word in the exercise
+          for (const word of progress.selectedWords) {
+            const wordObj = {
+              word: word,
+              definition: "Used correctly in a word association exercise",
+              partOfSpeech: "various",
+              synonyms: [],
+              antonyms: [],
+              examples: [progress.userSentence],
+              mnemonic: "",
+              difficulty: "medium",
+              hints: []
+            };
+            
+             saveLearnedWord(wordObj, {
+              mastery: 75, // Medium-high mastery for word association
+              lastPracticed: new Date(),
+            });
+            
+            // Increment word learned counter for each word in successful exercises
+             incrementWordLearned();
+          }
+          
+          successfulExercises++;
+        }
+      }
+      
+      // Increment exercise completed once for the whole session if at least one exercise was successful
+      if (successfulExercises > 0) {
+         incrementExerciseCompleted(25); // Award 25 points for completing the exercise
+      }
+    } catch (error) {
+      console.error("Error saving learned words:", error);
+      toast({
+        title: "Error saving progress",
+        description: "Your progress couldn't be saved, but your feedback will still be available.",
+        variant: "destructive",
+      });
     }
     
     // IMPORTANT: Clear any previous results first to prevent showing old data

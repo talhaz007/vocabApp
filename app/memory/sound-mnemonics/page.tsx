@@ -11,7 +11,8 @@ import { Progress } from "@/components/ui/progress"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
 import { Breadcrumb } from "@/components/breadcrumb"
-import { generateRandomWord, type WordDetails } from "@/lib/ai-word-service"
+import { generateRandomWord, saveLearnedWord, type WordDetails } from "@/lib/ai-word-service"
+import { incrementWordLearned, incrementExerciseCompleted } from "@/lib/stats-service"
 
 interface SoundMnemonic {
   id: string
@@ -350,6 +351,52 @@ export default function SoundMnemonicsPage() {
         variant: "destructive",
       });
       return;
+    }
+    
+    // Save successfully completed exercises to the user's learned words
+    try {
+      for (let i = 0; i < wordProgress.length; i++) {
+        const progress = updatedProgress[i];
+        
+        // Only save words that were correctly recalled
+        if (progress.isCorrect) {
+          const mnemonic = soundMnemonics[i];
+          
+          // Create a word object for the API
+          const wordObj = {
+            word: mnemonic.word,
+            definition: mnemonic.definition,
+            partOfSpeech: "noun", // Default
+            synonyms: [],
+            antonyms: [],
+            examples: [],
+            hints: [],
+            mnemonic: mnemonic.mnemonic,
+            difficulty: "medium",
+            mnemonicDescription: mnemonic.mnemonicDescription
+          };
+          
+          // Save to user's learned words
+          saveLearnedWord(wordObj, {
+            mastery: 80, // High mastery for correctly recalled mnemonics
+            lastPracticed: new Date(),
+          });
+          
+          // Increment word learned counter for each correctly recalled word
+          incrementWordLearned();
+        }
+      }
+      
+      // Increment exercise completed once for the whole session
+      incrementExerciseCompleted(20); // Award 20 points for completing the exercise
+      
+    } catch (error) {
+      console.error("Error saving learned words:", error);
+      toast({
+        title: "Error saving progress",
+        description: "Your progress couldn't be saved, but your feedback will still be available.",
+        variant: "destructive",
+      });
     }
     
     // Store the exercises in localStorage for the feedback page to process

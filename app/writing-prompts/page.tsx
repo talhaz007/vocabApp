@@ -13,6 +13,7 @@ import { Breadcrumb } from "@/components/breadcrumb"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { generateWritingPrompt, saveLearnedWord } from "@/lib/ai-word-service"
+import { incrementWordLearned, incrementExerciseCompleted } from "@/lib/stats-service"
 
 interface WritingPrompt {
   id: string
@@ -308,8 +309,9 @@ export default function WritingPromptsPage() {
                 notes: `Used in writing prompt: "${selectedPrompt.title}"`
               }
             )
+            incrementWordLearned();
           }
-          
+          await incrementExerciseCompleted(10);
           toast({
             title: `${result.usedWords.length} words saved to your vocabulary`,
             description: "Your writing progress has been recorded",

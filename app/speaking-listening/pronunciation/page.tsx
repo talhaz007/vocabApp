@@ -9,7 +9,8 @@ import { Progress } from "@/components/ui/progress"
 import { Slider } from "@/components/ui/slider"
 import { useToast } from "@/hooks/use-toast"
 import { Breadcrumb } from "@/components/breadcrumb"
-import { generateRandomWord, saveLearnedWord, checkPronunciation, type WordDetails } from "@/lib/ai-word-service"
+import { generateRandomWord, checkPronunciation, saveLearnedWord, type WordDetails } from "@/lib/ai-word-service"
+import { incrementWordLearned, incrementExerciseCompleted } from "@/lib/stats-service"
 
 interface PronunciationWord {
   id: string
@@ -293,29 +294,6 @@ export default function PronunciationPage() {
       if (result.accuracy > 0.7) {
         setFeedbackType("success")
         setFeedback(result.feedback || "Great pronunciation! You said it correctly.")
-        
-        // Save the word as learned
-        try {
-          saveLearnedWord(
-            {
-              word: currentWord,
-              definition: "Practiced pronunciation",
-              mnemonic: "",
-              difficulty: pronunciationWords[currentIndex].difficulty,
-              hints: pronunciationWords[currentIndex].tips,
-              examples: [],
-              synonyms: [],
-              antonyms: []
-            },
-            {
-              mastery: result.accuracy * 100,
-              lastPracticed: new Date(),
-              notes: "Practiced in pronunciation exercise"
-            }
-          )
-        } catch (error) {
-          console.error("Error saving pronunciation progress:", error)
-        }
       } else {
         setFeedbackType("error")
         setFeedback(result.feedback || "Try again with the pronunciation tips below.")
@@ -333,7 +311,7 @@ export default function PronunciationPage() {
     }
   }
 
-  const handleFinish = () => {
+  const handleFinish = async () => {
     // Only include exercises that have been attempted (have feedback)
     const exercisesToSave = pronunciationProgress
       .map((progress, index) => {
@@ -353,6 +331,51 @@ export default function PronunciationPage() {
     
     // Only proceed if there are attempted exercises
     if (exercisesToSave.length > 0) {
+      // Save all correctly pronounced words to the user's learned words
+      try {
+        for (let i = 0; i < pronunciationProgress.length; i++) {
+          const progress = pronunciationProgress[i];
+          
+          // Only save words that were pronounced correctly
+          if (progress.feedbackType === "success") {
+            const word = pronunciationWords[i];
+            
+            // Save the word as learned
+            saveLearnedWord(
+              {
+                word: word.word,
+                definition: "Practiced pronunciation",
+                mnemonic: "",
+                difficulty: "medium",
+                hints: word.tips,
+                examples: [],
+                synonyms: [],
+                antonyms: []
+              },
+              {
+                mastery: 85, // High mastery for correct pronunciation
+                lastPracticed: new Date(),
+                notes: "Practiced in pronunciation exercise"
+              }
+            );
+
+            // Increment word learned counter for each correctly pronounced word
+             incrementWordLearned();
+          }
+        }
+        
+        // Increment exercise completed once for the whole session
+        await incrementExerciseCompleted(25); // Award 25 points for completing the exercise
+        
+      } catch (error) {
+        console.error("Error saving pronunciation progress:", error);
+        toast({
+          title: "Error saving progress",
+          description: "Your progress couldn't be saved, but your feedback will still be available.",
+          variant: "destructive",
+        });
+      }
+      
       localStorage.setItem('savedSpeakingListeningExercises', JSON.stringify(exercisesToSave));
       router.push("/speaking-listening/feedback");
     } else {

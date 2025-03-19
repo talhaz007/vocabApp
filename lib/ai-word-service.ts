@@ -158,36 +158,6 @@ export async function evaluateSentence(
     
     const data = await response.json() as SentenceEvaluation
     
-    // If the sentence is valid, save each word to the learned_words table
-    if (data.isValid) {
-      try {
-        // For each word in the required words, save it as a learned word
-        for (const word of requiredWords) {
-           saveLearnedWord(
-            {
-              word: word,
-              definition: `Used in sentence: "${sentence}"`,
-              mnemonic: "",
-              difficulty: difficulty, // Use the provided difficulty
-              hints: [],
-              examples: [sentence],
-              synonyms: [],
-              antonyms: []
-            },
-            {
-              // Adjust mastery based on difficulty
-              mastery: difficulty === "easy" ? 80 : difficulty === "medium" ? 70 : 60,
-              lastPracticed: new Date(),
-              notes: `Used in word association exercise: "${sentence}"`
-            }
-          )
-        }
-      } catch (error) {
-        console.error("Error saving words from sentence:", error)
-        // Continue even if saving fails - don't affect the user experience
-      }
-    }
-    
     return data
   } catch (error) {
     console.error("Error evaluating sentence:", error)

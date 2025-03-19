@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Calendar, BarChart3, PieChart, TrendingUp, BookOpen, Award, ArrowRight, ChevronRight, Pencil } from "lucide-react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
+import { getUserStats } from "@/lib/stats-service"
 
 // Mock data for the dashboard
 const stats = {
@@ -40,6 +41,35 @@ const stats = {
 
 export default function DashboardPage() {
   const [timeframe, setTimeframe] = useState<"week" | "month" | "all">("week")
+  const [stats, setStats] = useState({
+    wordsLearned: 0,
+    streak: 0,
+    totalExercises: 0,
+    totalPoints: 0,
+  });
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Load stats when component mounts
+    async function loadStats() {
+      try {
+        setIsLoading(true);
+        const userStats = await getUserStats();
+        setStats({
+          wordsLearned: userStats.wordsLearned,
+          streak: userStats.streak,
+          totalExercises: userStats.totalExercises,
+          totalPoints: userStats.totalPoints,
+        });
+      } catch (error) {
+        console.error("Error loading stats:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    
+    loadStats();
+  }, []);
 
   return (
     <div className="container py-8">
@@ -182,75 +212,76 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          <Card className="bg-gradient-to-br from-background to-blue-50 dark:from-background dark:to-blue-950/10">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <Card>
+            <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium">Words Learned</CardTitle>
-              <BookOpen className="h-4 w-4 text-blue-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.wordsLearned}</div>
-              <p className="text-xs text-muted-foreground">{stats.wordsInProgress} in progress</p>
-              <Progress value={(stats.wordsLearned / stats.totalWords) * 100} className="h-2 mt-2" />
-              <p className="text-xs text-muted-foreground mt-1">
-                {stats.wordsLearned} of {stats.totalWords} words
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-background to-green-50 dark:from-background dark:to-green-950/10">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Current Streak</CardTitle>
-              <Calendar className="h-4 w-4 text-green-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.streak} days</div>
-              <p className="text-xs text-muted-foreground">Keep it up!</p>
-              <div className="flex gap-1 mt-2">
-                {Array.from({ length: 7 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className={`h-2 flex-1 rounded-full ${i < stats.streak % 7 ? "bg-green-500" : "bg-muted"}`}
-                  />
-                ))}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">Last 7 days</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-background to-amber-50 dark:from-background dark:to-amber-950/10">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Accuracy</CardTitle>
-              <BarChart3 className="h-4 w-4 text-amber-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.accuracy}%</div>
+              {isLoading ? (
+                <div className="h-6 w-12 bg-muted animate-pulse rounded" />
+              ) : (
+                <div className="text-2xl font-bold">{stats.wordsLearned}</div>
+              )}
               <p className="text-xs text-muted-foreground">
-                {stats.accuracy > 75 ? "Excellent!" : stats.accuracy > 50 ? "Good progress" : "Keep practicing"}
+                +5 from last week
               </p>
-              <Progress value={stats.accuracy} className="h-2 mt-2 [&>div]:bg-amber-500" />
-              <p className="text-xs text-muted-foreground mt-1">Based on your practice sessions</p>
             </CardContent>
           </Card>
-
-          <Card className="bg-gradient-to-br from-background to-red-50 dark:from-background dark:to-red-950/10">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Weakest Area</CardTitle>
-              <PieChart className="h-4 w-4 text-red-500" />
+          
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Current Streak</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">Antonyms</div>
-              <p className="text-xs text-muted-foreground">40% mastery</p>
-              <Progress value={40} className="h-2 mt-2 [&>div]:bg-red-500" />
-              <p className="text-xs text-muted-foreground mt-1">Suggested focus area</p>
+              {isLoading ? (
+                <div className="h-6 w-12 bg-muted animate-pulse rounded" />
+              ) : (
+                <div className="text-2xl font-bold">{stats.streak} days</div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Keep practicing daily!
+              </p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Exercises Completed</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="h-6 w-12 bg-muted animate-pulse rounded" />
+              ) : (
+                <div className="text-2xl font-bold">{stats.totalExercises}</div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Across all learning modes
+              </p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Total Points</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="h-6 w-12 bg-muted animate-pulse rounded" />
+              ) : (
+                <div className="text-2xl font-bold">{stats.totalPoints}</div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Earn more by completing exercises
+              </p>
             </CardContent>
           </Card>
         </div>
       </section>
 
       {/* Detailed Analytics Section */}
-      <section>
-        <h2 className="text-2xl font-bold mb-6">Detailed Analytics</h2>
+      {/* <section> */}
+        {/* <h2 className="text-2xl font-bold mb-6">Detailed Analytics</h2>
         <Tabs defaultValue="progress" className="w-full">
           <TabsList className="grid w-full grid-cols-3 mb-6">
             <TabsTrigger value="progress">Learning Progress</TabsTrigger>
@@ -260,7 +291,7 @@ export default function DashboardPage() {
 
           <TabsContent value="progress" className="space-y-6">
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {Object.entries(stats.categories).map(([category, data]) => (
+              {stats?.categories && Object.entries(stats.categories)?.map(([category, data]) => (
                 <Card key={category} className="overflow-hidden">
                   <div
                     className="h-1 bg-gradient-to-r from-primary to-primary/20"
@@ -283,7 +314,7 @@ export default function DashboardPage() {
                   </CardContent>
                 </Card>
               ))}
-            </div>
+            </div> */}
 
             {/* <Card>
               <CardHeader>
@@ -315,7 +346,7 @@ export default function DashboardPage() {
                 </div>
               </CardContent>
             </Card> */}
-          </TabsContent>
+          {/* </TabsContent>
 
           <TabsContent value="recent">
             <Card>
@@ -325,7 +356,7 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {stats.recentWords.map((word) => (
+                  {stats?.recentWords?.map((word) => (
                     <div
                       key={word.word}
                       className="flex items-center justify-between border-b pb-3 last:border-0 last:pb-0"
@@ -349,7 +380,7 @@ export default function DashboardPage() {
 
           <TabsContent value="achievements">
             <div className="grid gap-6 md:grid-cols-3">
-              {stats.achievements.map((achievement) => (
+              {stats?.achievements?.map((achievement) => (
                 <Card key={achievement.name} className="overflow-hidden">
                   <div
                     className="h-1 bg-gradient-to-r from-primary to-primary/20"
@@ -376,7 +407,7 @@ export default function DashboardPage() {
             </div>
           </TabsContent>
         </Tabs>
-      </section>
+      </section> */}
     </div>
   )
 }

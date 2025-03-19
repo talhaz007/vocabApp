@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast"
 import { Breadcrumb } from "@/components/breadcrumb"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { generateRandomWord, saveLearnedWord, generateShadowingExercise, checkShadowingPronunciation, type WordDetails } from "@/lib/ai-word-service"
+import { incrementWordLearned, incrementExerciseCompleted } from "@/lib/stats-service"
 
 interface ShadowingExercise {
   id: string
@@ -239,39 +240,6 @@ export default function ShadowingPage() {
       if (result.accuracy > 0.7) {
         setFeedbackType("success")
         setFeedback(result.feedback || "Excellent shadowing! Your pronunciation and rhythm closely match the original.")
-        
-        // Use the keywords from the exercise instead of extracting words
-        const keywords = currentExercise.keywords || []
-        
-        // Save the keywords as learned words
-        try {
-          for (const word of keywords) {
-            await saveLearnedWord(
-              {
-                word: word,
-                definition: `Key vocabulary from ${currentExercise.category} shadowing exercise`,
-                mnemonic: "",
-                difficulty: currentExercise.difficulty,
-                hints: currentExercise.focusPoints,
-                examples: [currentExercise.text],
-                synonyms: [],
-                antonyms: []
-              },
-              {
-                mastery: result.accuracy * 100,
-                lastPracticed: new Date(),
-                notes: `Practiced in ${currentExercise.category} shadowing exercise`
-              }
-            )
-          }
-          
-          toast({
-            title: `${keywords.length} keywords saved to your vocabulary`,
-            description: "Your shadowing progress has been recorded",
-          })
-        } catch (error) {
-          console.error("Error saving shadowing progress:", error)
-        }
       } else {
         setFeedbackType("error")
         setFeedback(result.feedback || "Good effort! Try to focus more on matching the rhythm and intonation of the original.")
@@ -334,7 +302,7 @@ export default function ShadowingPage() {
     }
   }
 
-  const handleFinish = () => {
+  const handleFinish = async () => {
     // Only include exercises that have been attempted (have feedback)
     const exercisesToSave = shadowingProgress
       .map((progress, index) => {
@@ -355,6 +323,60 @@ export default function ShadowingPage() {
     
     // Only proceed if there are attempted exercises
     if (exercisesToSave.length > 0) {
+      // Save all keywords from successful shadowing exercises
+      try {
+        for (let i = 0; i < shadowingProgress.length; i++) {
+          const progress = shadowingProgress[i];
+          
+          // Only save keywords from exercises that were shadowed successfully
+          if (progress.feedbackType === "success") {
+            const exercise = shadowingExercises[i];
+            
+            // Use the keywords from the exercise
+            const keywords = exercise.keywords || [];
+            
+            // Save each keyword as a learned word
+            for (const word of keywords) {
+               saveLearnedWord(
+                {
+                  word: word,
+                  definition: `Key vocabulary from ${exercise.category} shadowing exercise`,
+                  mnemonic: "",
+                  difficulty: exercise.difficulty,
+                  hints: exercise.focusPoints,
+                  examples: [exercise.text],
+                  synonyms: [],
+                  antonyms: []
+                },
+                {
+                  mastery: 75, // Good mastery for shadowing
+                  lastPracticed: new Date(),
+                  notes: `Practiced in ${exercise.category} shadowing exercise`
+                }
+              );
+              
+              // Increment word learned counter for each keyword
+              incrementWordLearned();
+            }
+          }
+        }
+        
+        // Increment exercise completed once for the whole session
+        await incrementExerciseCompleted(30); // Award 30 points for completing shadowing (it's challenging)
+        
+        toast({
+          title: "Shadowing exercises completed",
+          description: "Your progress has been saved",
+        });
+      } catch (error) {
+        console.error("Error saving shadowing progress:", error);
+        toast({
+          title: "Error saving progress",
+          description: "Your progress couldn't be saved, but your feedback will still be available.",
+          variant: "destructive",
+        });
+      }
+      
       localStorage.setItem('savedSpeakingListeningExercises', JSON.stringify(exercisesToSave));
       router.push("/speaking-listening/feedback");
     } else {

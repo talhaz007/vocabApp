@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog"
 import { Breadcrumb } from "@/components/breadcrumb"
 import { generateRandomWord, saveLearnedWord, type WordDetails } from "@/lib/ai-word-service"
+import { incrementWordLearned, incrementExerciseCompleted } from "@/lib/stats-service"
 
 
 export default function SentenceUsagePage() {
@@ -163,16 +164,6 @@ export default function SentenceUsagePage() {
         setScore(score + pointsEarned)
         setStreak(streak + 1)
 
-        // Save to user's learned words in Supabase
-        try {
-          await saveLearnedWord(currentWord, {
-            mastery: Math.min(100, 60 + (pointsEarned * 10)),
-            lastPracticed: new Date(),
-          })
-        } catch (error) {
-          console.error("Error saving learned word:", error)
-        }
-
         toast({
           title: `${result.usageQuality || "Good"} usage!`,
           description: `+${pointsEarned} points! Current streak: ${streak + 1}`,
@@ -305,7 +296,7 @@ export default function SentenceUsagePage() {
     setHintLevel(0)
   }
 
-  const handleFinish = () => {
+  const handleFinish = async () => {
     // Save the final word and answer before finishing
     if (practiceWords[currentIndex] && userInput.trim() !== "") {
       const newSavedAnswer = {
@@ -319,12 +310,72 @@ export default function SentenceUsagePage() {
       // Store the answers in localStorage for the feedback page to process
       localStorage.setItem('savedVocabularyAnswers', JSON.stringify(finalAnswers));
       
-      // Navigate directly to the feedback page without waiting for API call
-      router.push('/learn-practice/feedback');
+      // Save all correctly used words to the user's learned words
+      try {
+        for (let i = 0; i < wordProgress.length; i++) {
+          const progress = wordProgress[i];
+          
+          // Only save words that were used correctly
+          if (progress.isCorrect) {
+            const word = practiceWords[i];
+            const quality = progress.usageQuality || "good";
+            const mastery = Math.min(100, 60 + (calculatePoints(quality) * 10));
+            
+             saveLearnedWord(word, {
+              mastery: mastery,
+              lastPracticed: new Date(),
+            });
+            
+            // Increment word learned counter for each correctly used word
+             incrementWordLearned();
+          }
+        }
+        
+        // Increment exercise completed once for the whole session
+         incrementExerciseCompleted(20); // Award 20 points for completing the exercise
+        
+        // Navigate directly to the feedback page
+        router.push('/learn-practice/feedback');
+      } catch (error) {
+        console.error("Error saving learned words:", error);
+        toast({
+          title: "Error saving progress",
+          description: "Your progress couldn't be saved, but you can still see your feedback.",
+          variant: "destructive",
+        });
+        
+        // Still navigate to feedback page even if saving fails
+        router.push('/learn-practice/feedback');
+      }
     } else {
       // If there's no current word/input but we have previous answers
       if (savedAnswers.length > 0) {
         localStorage.setItem('savedVocabularyAnswers', JSON.stringify(savedAnswers));
+        
+        // Try to save any correctly used words from previous answers
+        try {
+          for (let i = 0; i < wordProgress.length; i++) {
+            const progress = wordProgress[i];
+            
+            if (progress.isCorrect) {
+              const word = practiceWords[i];
+              const quality = progress.usageQuality || "good";
+              const mastery = Math.min(100, 60 + (calculatePoints(quality) * 10));
+              
+               saveLearnedWord(word, {
+                mastery: mastery,
+                lastPracticed: new Date(),
+              });
+              
+               incrementWordLearned();
+            }
+          }
+          
+           incrementExerciseCompleted(20);
+        } catch (error) {
+          console.error("Error saving learned words:", error);
+        }
+        
         router.push('/learn-practice/feedback');
       } else {
         // No answers to process
