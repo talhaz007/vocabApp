@@ -14,17 +14,27 @@ import { Checkbox } from "@/components/ui/checkbox"
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    setError(null)
     
-    // Simulate login process
-    setTimeout(() => {
+    const formData = new FormData(e.target as HTMLFormElement)
+    try {
+      const result = await login(formData)
+      if (result?.error) {
+        setError(result.error)
+        setIsLoading(false)
+      }
+      // If login is successful, the server action will redirect
+    } catch (error) {
+      console.error("Login failed:", error)
+      setError("An unexpected error occurred. Please try again.")
       setIsLoading(false)
-      router.push("/dashboard")
-    }, 1500)
+    }
   }
 
   return (
@@ -36,8 +46,13 @@ export default function LoginPage() {
             Enter your credentials to access your account
           </CardDescription>
         </CardHeader>
-        <form>
+        <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
+            {error && (
+              <div className="p-3 bg-destructive/15 border border-destructive text-destructive text-sm rounded-md">
+                {error}
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input id="email" name="email" type="email" placeholder="name@example.com" required />
@@ -83,7 +98,7 @@ export default function LoginPage() {
             </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
-            <Button className="w-full" formAction={login}>
+            <Button className="w-full" type="submit" disabled={isLoading}>
               {isLoading ? (
                 <div className="flex items-center">
                   <svg className="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

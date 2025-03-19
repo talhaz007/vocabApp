@@ -14,17 +14,27 @@ import { signup } from "../login/action"
 export default function SignupPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    setError(null)
     
-    // Simulate signup process
-    setTimeout(() => {
+    const formData = new FormData(e.target as HTMLFormElement)
+    try {
+      const result = await signup(formData)
+      if (result?.error) {
+        setError(result.error)
+        setIsLoading(false)
+      }
+      // If signup is successful, the server action will redirect
+    } catch (error) {
+      console.error("Signup failed:", error)
+      setError("An unexpected error occurred. Please try again.")
       setIsLoading(false)
-      router.push("/dashboard")
-    }, 1500)
+    }
   }
 
   return (
@@ -38,6 +48,11 @@ export default function SignupPage() {
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
+            {error && (
+              <div className="p-3 bg-destructive/15 border border-destructive text-destructive text-sm rounded-md">
+                {error}
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="firstName">First name</Label>
